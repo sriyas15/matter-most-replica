@@ -206,7 +206,7 @@ export const registerMessageHandlers = (io, socket) => {
   socket.on("message:typing", ({ channelId }) => {
     socket.to(`channel:${channelId}`).emit("message:typing", {
       userId: user._id,
-      displayName: user.displayName,
+      displayName: user.displayName || user.username || "Someone",
       channelId,
     });
   });
