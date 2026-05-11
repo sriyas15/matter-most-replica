@@ -141,7 +141,7 @@ export default function MessageItem({ message, isConsecutive }) {
       onMouseLeave={() => setHovered(false)}
     >
       {/* Avatar */}
-      <Avatar user={user} size={32} showStatus />
+      <Avatar user={sender} size={32} showStatus />
 
       <div className="flex-1 min-w-0">
         {/* ── FIX: meta row contains name + time + actions together ── */}
