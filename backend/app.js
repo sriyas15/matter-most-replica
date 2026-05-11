@@ -20,7 +20,7 @@ app.use(helmet());
 console.log(process.env.CLIENT_URL)
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: "*",
     credentials: true,           // allow cookies (refresh token)
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
