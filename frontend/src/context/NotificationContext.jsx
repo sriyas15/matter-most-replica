@@ -4,6 +4,8 @@ import { getSocket } from "../lib/socket/socket";
 import { useAuth }   from "./AuthContext";
 import { useWorkspace } from "./WorkspaceContext";
 
+const { user, socketReady } = useAuth();
+
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
@@ -36,11 +38,71 @@ export function NotificationProvider({ children }) {
   }, [fetchNotifications]);
 
   // ── Socket: real-time notifications ────────────────────────────────────────
-  useEffect(() => {
+//   useEffect(() => {
+//     const socket = getSocket();
+//     if (!socket) return;
+
+//     // notification:new — from createNotification() in backend
+//     const onNew = (notification) => {
+//       setNotifications((prev) => {
+//         if (prev.find((n) => n._id === notification._id)) return prev;
+//         return [notification, ...prev];
+//       });
+//       setUnreadCount((c) => c + 1);
+//       if (notification.type === "mention") {
+//         setMentions((prev) => [notification, ...prev]);
+//       }
+//     };
+
+//     // notification:mention — from socket message handler @mention parsing
+//     const onMention = ({ message, channelId }) => {
+//       const synthetic = {
+//         _id:       `tmp-${Date.now()}`,
+//         type:      "mention",
+//         actor:     message.sender,
+//         message:   message,
+//         channel:   { _id: channelId },
+//         preview:   message.text?.slice(0, 120) || "",
+//         isRead:    false,
+//         createdAt: new Date().toISOString(),
+//       };
+//       setNotifications((prev) => [synthetic, ...prev]);
+//       setUnreadCount((c) => c + 1);
+//       setMentions((prev) => [synthetic, ...prev]);
+//     };
+
+//     // notification:dm — from socket DM handler
+//     const onDMNotif = ({ message, channelId }) => {
+//       const synthetic = {
+//         _id:       `tmp-dm-${Date.now()}`,
+//         type:      "direct_message",
+//         actor:     message.sender,
+//         message:   message,
+//         channel:   { _id: channelId },
+//         preview:   message.text?.slice(0, 120) || "",
+//         isRead:    false,
+//         createdAt: new Date().toISOString(),
+//       };
+//       setNotifications((prev) => [synthetic, ...prev]);
+//       setUnreadCount((c) => c + 1);
+//     };
+
+//     socket.on("notification:new",     onNew);
+//     socket.on("notification:mention", onMention);
+//     socket.on("notification:dm",      onDMNotif);
+
+//     return () => {
+//       socket.off("notification:new",     onNew);
+//       socket.off("notification:mention", onMention);
+//       socket.off("notification:dm",      onDMNotif);
+//     };
+//   }, []);
+
+useEffect(() => {
+    if (!socketReady) return;
     const socket = getSocket();
     if (!socket) return;
 
-    // notification:new — from createNotification() in backend
     const onNew = (notification) => {
       setNotifications((prev) => {
         if (prev.find((n) => n._id === notification._id)) return prev;
@@ -52,7 +114,6 @@ export function NotificationProvider({ children }) {
       }
     };
 
-    // notification:mention — from socket message handler @mention parsing
     const onMention = ({ message, channelId }) => {
       const synthetic = {
         _id:       `tmp-${Date.now()}`,
@@ -69,7 +130,6 @@ export function NotificationProvider({ children }) {
       setMentions((prev) => [synthetic, ...prev]);
     };
 
-    // notification:dm — from socket DM handler
     const onDMNotif = ({ message, channelId }) => {
       const synthetic = {
         _id:       `tmp-dm-${Date.now()}`,
@@ -94,7 +154,7 @@ export function NotificationProvider({ children }) {
       socket.off("notification:mention", onMention);
       socket.off("notification:dm",      onDMNotif);
     };
-  }, []);
+  }, [socketReady]); // ← key change
 
   // ── Mark single as read ─────────────────────────────────────────────────────
   const markRead = useCallback(async (notificationId) => {

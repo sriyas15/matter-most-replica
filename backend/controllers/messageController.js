@@ -34,11 +34,11 @@ export const sendMessage = async (req, res) => {
     }
 
     const message = await Message.create({
-      channel:        channelId,
-      workspace:      workspaceId,
-      sender:         userId,
-      text:           text?.trim() ?? "",
-      parentMessage:  parentMessageId || null,
+      channel: channelId,
+      workspace: workspaceId,
+      sender: userId,
+      text: text?.trim() ?? "",
+      parentMessage: parentMessageId || null,
       attachments,
       mentions,
       channelMentions,
@@ -58,7 +58,7 @@ export const sendMessage = async (req, res) => {
     await Channel.findByIdAndUpdate(channelId, {
       lastActivityAt: new Date(),
       lastMessage: {
-        text:   text?.slice(0, 100) ?? "",
+        text: text?.slice(0, 100) ?? "",
         sender: userId,
         sentAt: new Date(),
       },
@@ -71,18 +71,53 @@ export const sendMessage = async (req, res) => {
           createNotification({
             recipientId: mentionedUserId,
             workspaceId,
-            type:        "mention",
-            actorId:     userId,
-            messageId:   message._id,
+            type: "mention",
+            actorId: userId,
+            messageId: message._id,
             channelId,
-            preview:     text?.slice(0, 120) ?? "",
+            preview: text?.slice(0, 120) ?? "",
           });
         }
       });
     }
     const io = getIO();
     io.to(`channel:${channelId}`).emit("message:new", message);
-    
+
+    // Fire mention notifications
+    if (mentions?.length) {
+      mentions.forEach((mentionedUserId) => {
+        if (mentionedUserId.toString() !== userId.toString()) {
+          createNotification({
+            recipientId: mentionedUserId,
+            workspaceId,
+            type: "mention",
+            actorId: userId,
+            messageId: message._id,
+            channelId,
+            preview: text?.slice(0, 120) ?? "",
+          });
+        }
+      });
+    }
+
+    // Fire DM notification if this is a direct/group channel
+    if (channel.type === "direct" || channel.type === "group") {
+      channel.members.forEach(({ user: memberId }) => {
+        if (memberId.toString() !== userId.toString()) {
+          createNotification({
+            recipientId: memberId,
+            workspaceId,
+            type: "direct_message",
+            actorId: userId,
+            messageId: message._id,
+            channelId,
+            preview: text?.slice(0, 120) ?? "",
+          });
+        }
+      });
+    }
+
+
     res.status(201).json({ success: true, data: message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -105,7 +140,7 @@ export const getMessages = async (req, res) => {
 
     const query = { channel: channelId, isDeleted: false, parentMessage: null };
     if (before) query.createdAt = { $lt: new Date(before) };
-    if (after)  query.createdAt = { ...(query.createdAt || {}), $gt: new Date(after) };
+    if (after) query.createdAt = { ...(query.createdAt || {}), $gt: new Date(after) };
 
     const messages = await Message.find(query)
       .sort({ createdAt: -1 })
@@ -166,7 +201,7 @@ export const editMessage = async (req, res) => {
     if (message.messageType !== "user")
       return res.status(400).json({ success: false, message: "Cannot edit system messages" });
 
-    message.text     = text.trim();
+    message.text = text.trim();
     message.isEdited = true;
     message.editedAt = new Date();
     await message.save();
@@ -223,11 +258,11 @@ export const reactToMessage = async (req, res) => {
       createNotification({
         recipientId: message.sender,
         workspaceId: message.workspace,
-        type:        "reaction",
-        actorId:     userId,
-        messageId:   message._id,
-        channelId:   message.channel,
-        preview:     emoji,
+        type: "reaction",
+        actorId: userId,
+        messageId: message._id,
+        channelId: message.channel,
+        preview: emoji,
       });
     }
 
@@ -285,9 +320,9 @@ export const searchMessages = async (req, res) => {
       return res.status(400).json({ success: false, message: "Query is required" });
 
     const query = {
-      workspace:  workspaceId,
-      isDeleted:  false,
-      $text:      { $search: q },
+      workspace: workspaceId,
+      isDeleted: false,
+      $text: { $search: q },
     };
     if (channelId) query.channel = channelId;
 
