@@ -71,7 +71,7 @@ export default function MessageList() {
         );
       })}
 
-      {typingUsers.length > 0 && <TypingIndicator users={typingUsers} />}
+      {typingUsers.length > 0 && <TypingIndicator users={typingUsers.map((u) => u.displayName)} />}
       <div ref={bottomRef} />
     </div>
   );

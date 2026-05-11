@@ -14,223 +14,107 @@ export function ChatProvider({ children }) {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const typingTimers = useRef({});
-  const activeChannelIdRef = useRef(null);
-  // Tracks whether socket listeners have been registered yet.
-  // channel:join must not fire until this is true.
-  const listenersReadyRef = useRef(false);
 
+  // ── Single effect: register listeners + join room + load messages ──────────
   useEffect(() => {
-    activeChannelIdRef.current = activeChannel?._id ?? null;
-  }, [activeChannel?._id]);
+    if (!socketReady || !activeChannel || !activeWorkspace) {
+      setMessages([]);
+      return;
+    }
 
-  // ── EFFECT 1: Register socket listeners ───────────────────────────────────
-  // Runs first (React guarantees top-down effect order).
-  // Sets listenersReadyRef = true so Effect 2 knows it's safe to join.
-//   useEffect(() => {
-//     if (!socketReady) return;
+    const socket = getSocket();
+    if (!socket) return;
 
-//     const socket = getSocket();
-//     if (!socket) return;
+    const channelId = activeChannel._id;
 
-//     const onNewMessage = (msg) => {
-//       const msgChannelId =
-//         msg.channel?._id?.toString?.() ??
-//         msg.channel?.toString?.() ??
-//         msg.channel;
-
-//       if (msgChannelId !== activeChannelIdRef.current) return;
-
-//       setMessages((prev) => {
-//         if (prev.find((m) => m._id === msg._id)) return prev;
-//         return [...prev, msg];
-//       });
-//     };
-
-//     const onMessageUpdated = ({ messageId, text, isEdited, editedAt }) => {
-//       setMessages((prev) =>
-//         prev.map((m) => (m._id === messageId ? { ...m, text, isEdited, editedAt } : m))
-//       );
-//     };
-
-//     const onMessageDeleted = ({ messageId }) => {
-//       setMessages((prev) => prev.filter((m) => m._id !== messageId));
-//     };
-
-//     const onTypingStart = ({ userId: uid, displayName, channelId }) => {
-//       if (uid?.toString() === user?._id?.toString()) return;
-//       if (channelId !== activeChannelIdRef.current) return;
-//       setTypingUsers((prev) =>
-//         prev.includes(displayName) ? prev : [...prev, displayName]
-//       );
-//       clearTimeout(typingTimers.current[uid]);
-//       typingTimers.current[uid] = setTimeout(() => {
-//         setTypingUsers((prev) => prev.filter((n) => n !== displayName));
-//       }, 3000);
-//     };
-
-//     const onTypingStop = ({ userId: uid, displayName }) => {
-//   clearTimeout(typingTimers.current[uid]);
-//   setTypingUsers((prev) => prev.filter((n) => n !== displayName));
-// };
-
-//     const onReactionUpdated = ({ messageId, reactions }) => {
-//       setMessages((prev) =>
-//         prev.map((m) => (m._id === messageId ? { ...m, reactions } : m))
-//       );
-//     };
-
-//     socket.on("message:new", onNewMessage);
-//     socket.on("message:updated", onMessageUpdated);
-//     socket.on("message:deleted", onMessageDeleted);
-//     socket.on("message:typing", onTypingStart);
-//     socket.on("message:stop_typing", onTypingStop);
-//     socket.on("message:reaction_updated", onReactionUpdated);
-
-//     // Mark listeners as live — Effect 2 can now safely emit channel:join
-//     listenersReadyRef.current = true;
-
-//     // If a channel was already active before listeners were ready, join it now
-//     if (activeChannelIdRef.current) {
-//       socket.emit("channel:join", { channelId: activeChannelIdRef.current });
-//     }
-
-//     return () => {
-//       socket.off("message:new", onNewMessage);
-//       socket.off("message:updated", onMessageUpdated);
-//       socket.off("message:deleted", onMessageDeleted);
-//       socket.off("message:typing", onTypingStart);
-//       socket.off("message:stop_typing", onTypingStop);
-//       socket.off("message:reaction_updated", onReactionUpdated);
-//       listenersReadyRef.current = false;
-//     };
-//   }, [socketReady]);
-
-// ChatContext.jsx — replace BOTH effects with this single one
-
-useEffect(() => {
-  if (!socketReady || !activeChannel || !activeWorkspace) {
-    setMessages([]);
-    return;
-  }
-
-  const socket = getSocket();
-  if (!socket) return;
-
-  const channelId = activeChannel._id;
-
-  // 1. Register all listeners FIRST
-  const onNewMessage = (msg) => {
-    const msgChannelId =
-      msg.channel?._id?.toString?.() ??
-      msg.channel?.toString?.() ??
-      msg.channel;
-
-    if (msgChannelId !== channelId) return;
-
-    setMessages((prev) => {
-      if (prev.find((m) => m._id === msg._id)) return prev;
-      return [...prev, msg];
-    });
-  };
-
-  const onMessageUpdated = ({ messageId, text, isEdited, editedAt }) => {
-    setMessages((prev) =>
-      prev.map((m) => (m._id === messageId ? { ...m, text, isEdited, editedAt } : m))
-    );
-  };
-
-  const onMessageDeleted = ({ messageId }) => {
-    setMessages((prev) => prev.filter((m) => m._id !== messageId));
-  };
-
-  const onTypingStart = ({ userId: uid, displayName, channelId: cid }) => {
-    if (uid?.toString() === user?._id?.toString()) return;
-    if (cid !== channelId) return;
-    setTypingUsers((prev) =>
-      prev.includes(displayName) ? prev : [...prev, displayName]
-    );
-    clearTimeout(typingTimers.current[uid]);
-    typingTimers.current[uid] = setTimeout(() => {
-      setTypingUsers((prev) => prev.filter((n) => n !== displayName));
-    }, 3000);
-  };
-
-  const onTypingStop = ({ userId: uid, displayName }) => {
-    clearTimeout(typingTimers.current[uid]);
-    setTypingUsers((prev) => prev.filter((n) => n !== displayName));
-  };
-
-  const onReactionUpdated = ({ messageId, reactions }) => {
-    setMessages((prev) =>
-      prev.map((m) => (m._id === messageId ? { ...m, reactions } : m))
-    );
-  };
-
-  socket.on("message:new", onNewMessage);
-  socket.on("message:updated", onMessageUpdated);
-  socket.on("message:deleted", onMessageDeleted);
-  socket.on("message:typing", onTypingStart);
-  socket.on("message:stop_typing", onTypingStop);
-  socket.on("message:reaction_updated", onReactionUpdated);
-
-  console.log("[chat] about to join channel:", channelId, "| socketReady:", socketReady, "| socket connected:", socket?.connected);
-
-  // 2. THEN join the room — listeners are guaranteed to be live
-  // socket.emit("channel:join", { channelId });
-  socket.emit("channel:join", { channelId }, (response) => {
-  console.log("[chat] channel:join ack:", response);
-});
-
-  // 3. Load messages in parallel (doesn't affect listener registration order)
-  setLoadingMsgs(true);
-  setTypingUsers([]);
-  api
-    .get(`/workspaces/${activeWorkspace._id}/channels/${channelId}/messages`)
-    .then(({ data }) => {
-      setMessages(data.data);
-      setHasMore(data.hasMore);
-    })
-    .finally(() => setLoadingMsgs(false));
-
-  return () => {
-    socket.off("message:new", onNewMessage);
-    socket.off("message:updated", onMessageUpdated);
-    socket.off("message:deleted", onMessageDeleted);
-    socket.off("message:typing", onTypingStart);
-    socket.off("message:stop_typing", onTypingStop);
-    socket.off("message:reaction_updated", onReactionUpdated);
-    socket.emit("channel:leave", { channelId });
-  };
-}, [socketReady, activeChannel?._id, activeWorkspace?._id]);
-
-  // ── EFFECT 2: Load messages + join/leave channel room ─────────────────────
-  // Only emits channel:join if listeners are already registered.
-  // If not (socketReady not yet true), Effect 1 handles the join after setup.
-  useEffect(() => {
-    if (!activeChannel || !activeWorkspace) { setMessages([]); return; }
-
-    setLoadingMsgs(true);
+    // 1. Clear typing state + timers from previous channel
     setTypingUsers([]);
+    Object.values(typingTimers.current).forEach(clearTimeout);
+    typingTimers.current = {};
 
+    // 2. Register listeners BEFORE joining the room
+    const onNewMessage = (msg) => {
+      const msgChannelId =
+        msg.channel?._id?.toString?.() ??
+        msg.channel?.toString?.() ??
+        msg.channel;
+      if (msgChannelId !== channelId) return;
+      setMessages((prev) => {
+        if (prev.find((m) => m._id === msg._id)) return prev;
+        return [...prev, msg];
+      });
+    };
+
+    const onMessageUpdated = ({ messageId, text, isEdited, editedAt }) => {
+      setMessages((prev) =>
+        prev.map((m) => (m._id === messageId ? { ...m, text, isEdited, editedAt } : m))
+      );
+    };
+
+    const onMessageDeleted = ({ messageId }) => {
+      setMessages((prev) => prev.filter((m) => m._id !== messageId));
+    };
+
+    // Track by { uid, displayName } so stop_typing can remove by uid
+    const onTypingStart = ({ userId: uid, displayName, channelId: cid }) => {
+      if (uid?.toString() === user?._id?.toString()) return;
+      if (cid !== channelId) return;
+      setTypingUsers((prev) =>
+        prev.find((u) => u.uid === uid) ? prev : [...prev, { uid, displayName }]
+      );
+      clearTimeout(typingTimers.current[uid]);
+      typingTimers.current[uid] = setTimeout(() => {
+        setTypingUsers((prev) => prev.filter((u) => u.uid !== uid));
+      }, 3000);
+    };
+
+    // Server only sends userId — no displayName — so filter by uid
+    const onTypingStop = ({ userId: uid }) => {
+      clearTimeout(typingTimers.current[uid]);
+      delete typingTimers.current[uid];
+      setTypingUsers((prev) => prev.filter((u) => u.uid !== uid));
+    };
+
+    const onReactionUpdated = ({ messageId, reactions }) => {
+      setMessages((prev) =>
+        prev.map((m) => (m._id === messageId ? { ...m, reactions } : m))
+      );
+    };
+
+    socket.on("message:new", onNewMessage);
+    socket.on("message:updated", onMessageUpdated);
+    socket.on("message:deleted", onMessageDeleted);
+    socket.on("message:typing", onTypingStart);
+    socket.on("message:stop_typing", onTypingStop);
+    socket.on("message:reaction_updated", onReactionUpdated);
+
+    // 3. Join room — listeners are live so no messages will be missed
+    socket.emit("channel:join", { channelId });
+
+    // 4. Load messages
+    setLoadingMsgs(true);
     api
-      .get(`/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}/messages`)
+      .get(`/workspaces/${activeWorkspace._id}/channels/${channelId}/messages`)
       .then(({ data }) => {
         setMessages(data.data);
         setHasMore(data.hasMore);
       })
       .finally(() => setLoadingMsgs(false));
 
-    // Only join if listeners are already live (Effect 1 ran first)
-    if (listenersReadyRef.current) {
-      const socket = getSocket();
-      if (socket) socket.emit("channel:join", { channelId: activeChannel._id });
-    }
-
     return () => {
-      const s = getSocket();
-      if (s) s.emit("channel:leave", { channelId: activeChannel._id });
+      socket.off("message:new", onNewMessage);
+      socket.off("message:updated", onMessageUpdated);
+      socket.off("message:deleted", onMessageDeleted);
+      socket.off("message:typing", onTypingStart);
+      socket.off("message:stop_typing", onTypingStop);
+      socket.off("message:reaction_updated", onReactionUpdated);
+      socket.emit("channel:leave", { channelId });
+      // Clear typing state on leave
+      setTypingUsers([]);
+      Object.values(typingTimers.current).forEach(clearTimeout);
+      typingTimers.current = {};
     };
-  }, [activeChannel?._id, activeWorkspace?._id]);
+  }, [socketReady, activeChannel?._id, activeWorkspace?._id]);
 
   // ── Send message ───────────────────────────────────────────────────────────
   const sendMessage = useCallback(async (text) => {
@@ -245,7 +129,7 @@ useEffect(() => {
     });
     return data.data;
   }, [activeChannel?._id, activeWorkspace?._id]);
-  
+
   // ── Load older messages ────────────────────────────────────────────────────
   const loadMoreMessages = useCallback(async () => {
     if (!hasMore || loadingMsgs || !messages.length) return;
@@ -272,7 +156,9 @@ useEffect(() => {
 
   return (
     <ChatContext.Provider value={{
-      messages, typingUsers, hasMore, loadingMsgs,
+      // Map typingUsers to display names for consumers
+      messages, typingUsers: typingUsers.map((u) => u.displayName),
+      hasMore, loadingMsgs,
       sendMessage, loadMoreMessages, emitTyping,
     }}>
       {children}
