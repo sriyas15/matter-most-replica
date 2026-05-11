@@ -59,6 +59,7 @@ export function ChatProvider({ children }) {
     const onTypingStart = ({ userId: uid, displayName, channelId: cid }) => {
       if (uid?.toString() === user?._id?.toString()) return;
       if (cid?.toString() !== channelId?.toString()) return;
+        console.log("[onTypingStart] uid:", uid, "| displayName:", displayName);
       setTypingUsers((prev) =>
         prev.find((u) => u.uid === uid) ? prev : [...prev, { uid, displayName }]
       );
@@ -158,16 +159,19 @@ export function ChatProvider({ children }) {
     );
   }, [activeChannel?._id]);
 
-  return (
-    <ChatContext.Provider value={{
-      // Map typingUsers to display names for consumers
-      messages, typingUsers: typingUsers.map((u) => u.displayName),
-      hasMore, loadingMsgs,
-      sendMessage, loadMoreMessages, emitTyping,
-    }}>
-      {children}
-    </ChatContext.Provider>
-  );
+ return (
+  <ChatContext.Provider value={{
+    messages, 
+    typingUsers: typingUsers.map((u) => {
+      console.log("[typingUsers map] u:", u);
+      return u.displayName;
+    }),
+    hasMore, loadingMsgs,
+    sendMessage, loadMoreMessages, emitTyping,
+  }}>
+    {children}
+  </ChatContext.Provider>
+);
 }
 
 export const useChat = () => useContext(ChatContext);
