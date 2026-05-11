@@ -1,23 +1,23 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
-import api          from "../lib/api";
+import api from "../lib/api";
 import { getSocket } from "../lib/socket/socket";
 import { useWorkspace } from "./WorkspaceContext";
-import { useAuth }   from "./AuthContext";
+import { useAuth } from "./AuthContext";
 
 const ChatContext = createContext(null);
 
 export function ChatProvider({ children }) {
-  const { user, socketReady }              = useAuth();
+  const { user, socketReady } = useAuth();
   const { activeWorkspace, activeChannel } = useWorkspace();
-  const [messages, setMessages]            = useState([]);
-  const [typingUsers, setTypingUsers]      = useState([]);
-  const [hasMore, setHasMore]              = useState(false);
-  const [loadingMsgs, setLoadingMsgs]      = useState(false);
-  const typingTimers                       = useRef({});
-  const activeChannelIdRef                 = useRef(null);
+  const [messages, setMessages] = useState([]);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
+  const typingTimers = useRef({});
+  const activeChannelIdRef = useRef(null);
   // Tracks whether socket listeners have been registered yet.
   // channel:join must not fire until this is true.
-  const listenersReadyRef                  = useRef(false);
+  const listenersReadyRef = useRef(false);
 
   useEffect(() => {
     activeChannelIdRef.current = activeChannel?._id ?? null;
@@ -68,9 +68,10 @@ export function ChatProvider({ children }) {
       }, 3000);
     };
 
-    const onTypingStop = ({ userId: uid }) => {
-      clearTimeout(typingTimers.current[uid]);
-    };
+    const onTypingStop = ({ userId: uid, displayName }) => {
+  clearTimeout(typingTimers.current[uid]);
+  setTypingUsers((prev) => prev.filter((n) => n !== displayName));
+};
 
     const onReactionUpdated = ({ messageId, reactions }) => {
       setMessages((prev) =>
@@ -78,11 +79,11 @@ export function ChatProvider({ children }) {
       );
     };
 
-    socket.on("message:new",              onNewMessage);
-    socket.on("message:updated",          onMessageUpdated);
-    socket.on("message:deleted",          onMessageDeleted);
-    socket.on("message:typing",           onTypingStart);
-    socket.on("message:stop_typing",      onTypingStop);
+    socket.on("message:new", onNewMessage);
+    socket.on("message:updated", onMessageUpdated);
+    socket.on("message:deleted", onMessageDeleted);
+    socket.on("message:typing", onTypingStart);
+    socket.on("message:stop_typing", onTypingStop);
     socket.on("message:reaction_updated", onReactionUpdated);
 
     // Mark listeners as live — Effect 2 can now safely emit channel:join
@@ -94,11 +95,11 @@ export function ChatProvider({ children }) {
     }
 
     return () => {
-      socket.off("message:new",              onNewMessage);
-      socket.off("message:updated",          onMessageUpdated);
-      socket.off("message:deleted",          onMessageDeleted);
-      socket.off("message:typing",           onTypingStart);
-      socket.off("message:stop_typing",      onTypingStop);
+      socket.off("message:new", onNewMessage);
+      socket.off("message:updated", onMessageUpdated);
+      socket.off("message:deleted", onMessageDeleted);
+      socket.off("message:typing", onTypingStart);
+      socket.off("message:stop_typing", onTypingStop);
       socket.off("message:reaction_updated", onReactionUpdated);
       listenersReadyRef.current = false;
     };
@@ -146,7 +147,7 @@ export function ChatProvider({ children }) {
     });
     return data.data;
   }, [activeChannel?._id, activeWorkspace?._id]);
-
+  
   // ── Load older messages ────────────────────────────────────────────────────
   const loadMoreMessages = useCallback(async () => {
     if (!hasMore || loadingMsgs || !messages.length) return;
