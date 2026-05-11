@@ -49,7 +49,13 @@ export function DMProvider({ children }) {
     if (socketReady) {
       const socket = getSocket();
       // FIX: was "join:channel" — correct name is "channel:join"
-      if (socket) socket.emit("channel:join", { channelId });
+      if (socket){
+        console.log("[dm] about to join channel:", channelId, "| socketReady:", socketReady, "| socket connected:", socket?.connected);
+socket.emit("channel:join", { channelId }, (response) => {
+  console.log("[dm] channel:join ack:", response);
+});
+      } 
+      // socket.emit("channel:join", { channelId });
     }
 
     return () => {

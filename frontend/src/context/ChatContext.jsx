@@ -173,8 +173,13 @@ useEffect(() => {
   socket.on("message:stop_typing", onTypingStop);
   socket.on("message:reaction_updated", onReactionUpdated);
 
+  console.log("[chat] about to join channel:", channelId, "| socketReady:", socketReady, "| socket connected:", socket?.connected);
+
   // 2. THEN join the room — listeners are guaranteed to be live
-  socket.emit("channel:join", { channelId });
+  // socket.emit("channel:join", { channelId });
+  socket.emit("channel:join", { channelId }, (response) => {
+  console.log("[chat] channel:join ack:", response);
+});
 
   // 3. Load messages in parallel (doesn't affect listener registration order)
   setLoadingMsgs(true);
