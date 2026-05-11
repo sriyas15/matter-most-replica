@@ -58,7 +58,7 @@ export function ChatProvider({ children }) {
     // Track by { uid, displayName } so stop_typing can remove by uid
     const onTypingStart = ({ userId: uid, displayName, channelId: cid }) => {
       if (uid?.toString() === user?._id?.toString()) return;
-      if (cid !== channelId) return;
+      if (cid?.toString() !== channelId?.toString()) return;
       setTypingUsers((prev) =>
         prev.find((u) => u.uid === uid) ? prev : [...prev, { uid, displayName }]
       );
