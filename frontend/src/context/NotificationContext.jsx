@@ -4,12 +4,11 @@ import { getSocket } from "../lib/socket/socket";
 import { useAuth }   from "./AuthContext";
 import { useWorkspace } from "./WorkspaceContext";
 
-const { user, socketReady } = useAuth();
 
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
-  const { user }            = useAuth();
+  const { user, socketReady } = useAuth();
   const { activeWorkspace } = useWorkspace();
 
   const [notifications, setNotifications]   = useState([]);
