@@ -42,11 +42,20 @@ export const register = async (req, res) => {
       emailVerificationToken: verificationToken,
     });
 
-    // ── CREATE DEFAULT WORKSPACE ──
+    const slug = `${user.username}-${Date.now()}`
+  .toLowerCase()
+  .replace(/\s+/g, "-");
+
     const workspace = await Workspace.create({
       name: `${user.displayName}'s Workspace`,
+      slug,
       owner: user._id,
-      members: [user._id],
+      members: [
+        {
+          user: user._id,
+          role: "owner",
+        },
+      ],
     });
 
     // ── CREATE DEFAULT GENERAL CHANNEL ──
@@ -92,11 +101,11 @@ export const login = async (req, res) => {
     if (user.isDeactivated)
       return res.status(403).json({ success: false, message: "Account deactivated" });
 
-    user.status   = "online";
+    user.status = "online";
     user.lastSeenAt = new Date();
     await user.save({ validateModifiedOnly: true });
 
-    const accessToken  = signAccess(user._id);
+    const accessToken = signAccess(user._id);
     const refreshToken = signRefresh(user._id);
     setRefreshCookie(res, refreshToken);
 
@@ -137,7 +146,7 @@ export const refresh = async (req, res) => {
     if (!user || user.isDeactivated)
       return res.status(401).json({ success: false, message: "User not found" });
 
-    const newAccess  = signAccess(user._id);
+    const newAccess = signAccess(user._id);
     const newRefresh = signRefresh(user._id);
     setRefreshCookie(res, newRefresh);
 
@@ -158,7 +167,7 @@ export const verifyEmail = async (req, res) => {
     if (!user)
       return res.status(400).json({ success: false, message: "Invalid or expired token" });
 
-    user.isEmailVerified        = true;
+    user.isEmailVerified = true;
     user.emailVerificationToken = undefined;
     await user.save({ validateModifiedOnly: true });
 
@@ -178,7 +187,7 @@ export const forgotPassword = async (req, res) => {
     if (!user) return res.json({ success: true, message: "If that email exists, a reset link was sent" });
 
     const resetToken = crypto.randomBytes(32).toString("hex");
-    user.passwordResetToken   = crypto.createHash("sha256").update(resetToken).digest("hex");
+    user.passwordResetToken = crypto.createHash("sha256").update(resetToken).digest("hex");
     user.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1h
     await user.save({ validateModifiedOnly: true });
 
@@ -200,15 +209,15 @@ export const resetPassword = async (req, res) => {
     const hashed = crypto.createHash("sha256").update(token).digest("hex");
 
     const user = await User.findOne({
-      passwordResetToken:   hashed,
+      passwordResetToken: hashed,
       passwordResetExpires: { $gt: Date.now() },
     }).select("+passwordResetToken +passwordResetExpires");
 
     if (!user)
       return res.status(400).json({ success: false, message: "Invalid or expired reset token" });
 
-    user.password             = password;
-    user.passwordResetToken   = undefined;
+    user.password = password;
+    user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save({ validateModifiedOnly: true });
 
