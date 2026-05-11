@@ -88,6 +88,10 @@ export function ChatProvider({ children }) {
     socket.on("message:stop_typing", onTypingStop);
     socket.on("message:reaction_updated", onReactionUpdated);
 
+    socket.on("message:typing", (data) => {
+  console.log("[raw typing]", data);
+});
+
     // 3. Join room — listeners are live so no messages will be missed
     socket.emit("channel:join", { channelId });
 
