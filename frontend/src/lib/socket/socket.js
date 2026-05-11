@@ -12,7 +12,7 @@ export const connectSocket = () => {
 
   const token = localStorage.getItem("accessToken");
 
-  socket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:4000", {
+  socket = io(import.meta.env.VITE_SOCKET_URL || "https://matter-most-replica.onrender.com", {
     auth: { token },
     transports: ["websocket"],
     reconnectionAttempts: 5,

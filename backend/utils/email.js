@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const FROM = `"${process.env.APP_NAME || "Mattermost"}" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`;
-const APP_URL = process.env.CLIENT_URL || "http://localhost:5173";
+const APP_URL = process.env.CLIENT_URL || "https://matter-most-replica.vercel.app";
 
 // ── Core send helper ──────────────────────────────────────────────────────────
 const sendMail = ({ to, subject, html }) =>
