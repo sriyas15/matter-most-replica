@@ -132,7 +132,7 @@ export const generateInviteLink = async (req, res) => {
     await workspace.save();
 
     // const inviteUrl = `${process.env.CLIENT_URL}/invite/${token}`;
-    const inviteUrl = `localhost:3000/invite/${token}`;
+    const inviteUrl = `https://matter-most-replica.vercel.app/invite/${token}`;
     res.json({ success: true, inviteUrl, expiresAt: workspace.inviteTokenExpiresAt });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
