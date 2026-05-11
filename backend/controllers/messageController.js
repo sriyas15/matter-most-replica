@@ -1,6 +1,7 @@
 import Message from "../models/Message.js";
 import Channel from "../models/Channel.js";
 import { createNotification } from "./notificationController.js";
+import { getIO } from "../socket/index.js";
 
 // ── POST /api/workspaces/:workspaceId/channels/:channelId/messages ────────────
 export const sendMessage = async (req, res) => {
@@ -79,7 +80,9 @@ export const sendMessage = async (req, res) => {
         }
       });
     }
-
+    const io = getIO();
+    io.to(`channel:${channelId}`).emit("message:new", message);
+    
     res.status(201).json({ success: true, data: message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
