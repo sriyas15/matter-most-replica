@@ -1,70 +1,57 @@
+const STATUS_COLOR = {
+  online: "#22c55e",
+  away: "#f59e0b",
+  dnd: "#ef4444",
+  offline: "#6b7280",
+};
+
 export default function Avatar({
   user,
   size = 32,
-  showStatus = false,
+  showStatus = true,
+  onClick,
 }) {
-  const name =
-    user?.displayName ||
-    user?.username ||
-    "Unknown";
+  if (!user) return null;
 
-  const initials = name
+  const initials = (user.displayName || user.username || "?")
     .split(" ")
     .map((w) => w[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
 
-  function getStatusColor(status) {
-    switch (status) {
-      case "online":
-        return "#22c55e";
-      case "away":
-        return "#f59e0b";
-      case "dnd":
-        return "#ef4444";
-      default:
-        return "#6b7280";
-    }
-  }
-
   return (
     <div
+      onClick={onClick}
       style={{
         position: "relative",
         width: size,
         height: size,
-        flexShrink: 0,
+        borderRadius: 8,
+        background: user.avatarColor || "#5d5fe8",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: size * 0.35,
+        fontWeight: 600,
+        color: "#fff",
+        cursor: onClick ? "pointer" : "default",
+        overflow: "hidden",
       }}
     >
-      <div
-        style={{
-          width: size,
-          height: size,
-          borderRadius: 8,
-          background: user?.avatarColor || "#5d5fe8",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-          color: "#fff",
-          fontSize: size * 0.35,
-          fontWeight: 500,
-        }}
-      >
-        {user?.avatar ? (
-          <img
-            src={user.avatar}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
-          />
-        ) : (
-          initials
-        )}
-      </div>
+      {user.avatar ? (
+        <img
+          src={user.avatar}
+          alt=""
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
+      ) : (
+        initials
+      )}
 
       {showStatus && (
         <span
@@ -76,7 +63,8 @@ export default function Avatar({
             height: size * 0.32,
             borderRadius: "50%",
             border: "2px solid #1a1a2a",
-            background: getStatusColor(user?.status),
+            background:
+              STATUS_COLOR[user.status] || STATUS_COLOR.offline,
           }}
         />
       )}

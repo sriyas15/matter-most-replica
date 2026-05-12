@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import api from "../lib/api";
@@ -35,7 +35,6 @@ export default function MessageItem({ message, isConsecutive }) {
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState(message.text || "");
   const [reactions, setReactions] = useState(message.reactions || []);
-  const editRef = useRef(null);
 
   const isMine = message.sender?._id === user?._id || message.sender === user?._id;
 
@@ -68,10 +67,10 @@ export default function MessageItem({ message, isConsecutive }) {
     } catch {}
   };
 
-  const reactionMap = reactions.reduce((acc, r) => {
-    acc[r.emoji] = r;
-    return acc;
-  }, {});
+  const reactionMap = (reactions || []).reduce((acc, r) => {
+  acc[r.emoji] = r;
+  return acc;
+}, {});
 
   if (isConsecutive) {
     return (

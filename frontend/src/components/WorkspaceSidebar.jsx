@@ -10,6 +10,7 @@ import { useWorkspace }          from "../context/WorkspaceContext";
 import { useDM }                 from "../context/DMContext";
 import { useNotifications }      from "../context/NotificationContext";
 import api                       from "../lib/api";
+import Avatar from "./ui/Avatar";
 
 const STATUS_COLOR = { online: "#22c55e", away: "#f59e0b", dnd: "#ef4444", offline: "#6b7280" };
 
@@ -199,7 +200,7 @@ export default function WorkspaceSidebar() {
 
         {/* Profile avatar */}
         <div style={{ position: "relative", marginBottom: 4 }}>
-          <div
+          {/* <div
             title={user.displayName || "Profile"}
             onClick={() => setShowMenu((p) => !p)}
             style={{
@@ -215,13 +216,14 @@ export default function WorkspaceSidebar() {
               : initials}
           </div>
 
-          {/* Status dot */}
+          
           <span style={{
             position: "absolute", bottom: -1, right: -1,
             width: 10, height: 10, borderRadius: "50%",
             border: "2px solid #1a1a2a",
-            background: STATUS_COLOR[user.status] || STATUS_COLOR.offline,
-          }} />
+            background: STATUS_COLOR[user.status] || STATUS_COLOR.offline,}}
+             /> */}
+          <Avatar user={user} size={32} onClick={() => setShowMenu((p) => !p)}/>
 
           {/* Dropdown */}
           {showMenu && (
