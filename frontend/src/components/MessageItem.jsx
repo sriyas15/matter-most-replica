@@ -39,6 +39,8 @@ export default function MessageItem({ message, isConsecutive }) {
   const isMine = message.sender?._id === user?._id || message.sender === user?._id;
 
   const sender = message.sender || {};
+  console.log(user)
+  console.log(sender)
   const name = sender.displayName || sender.name || sender.username || "Unknown";
   const time = formatTime(message.createdAt || message.timestamp);
 
