@@ -65,21 +65,21 @@ export const sendMessage = async (req, res) => {
     });
 
     // Fire mention notifications (non-blocking)
-    if (mentions.length) {
-      mentions.forEach((mentionedUserId) => {
-        if (mentionedUserId.toString() !== userId.toString()) {
-          createNotification({
-            recipientId: mentionedUserId,
-            workspaceId,
-            type: "mention",
-            actorId: userId,
-            messageId: message._id,
-            channelId,
-            preview: text?.slice(0, 120) ?? "",
-          });
-        }
-      });
-    }
+    // if (mentions.length) {
+    //   mentions.forEach((mentionedUserId) => {
+    //     if (mentionedUserId.toString() !== userId.toString()) {
+    //       createNotification({
+    //         recipientId: mentionedUserId,
+    //         workspaceId,
+    //         type: "mention",
+    //         actorId: userId,
+    //         messageId: message._id,
+    //         channelId,
+    //         preview: text?.slice(0, 120) ?? "",
+    //       });
+    //     }
+    //   });
+    // }
     const io = getIO();
     io.to(`channel:${channelId}`).emit("message:new", message);
 
@@ -116,8 +116,6 @@ export const sendMessage = async (req, res) => {
         }
       });
     }
-
-
     res.status(201).json({ success: true, data: message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

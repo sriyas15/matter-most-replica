@@ -14,7 +14,7 @@ export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
       origin: process.env.CLIENT_URL || "https://matter-most-replica.vercel.app",
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST","PUT", "DELETE"],
       credentials: true,
     },
     pingTimeout: 60000,

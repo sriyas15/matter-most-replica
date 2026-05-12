@@ -4,6 +4,40 @@ import { useAuth }  from "../context/AuthContext";
 
 const STATUS_COLOR = { online: "#3db87a", away: "#f0a22a", dnd: "#e53e3e", offline: "#6060a0" };
 
+// ── Date helpers ──────────────────────────────────────────────────────────────
+function getDayKey(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function getDayLabel(dateStr) {
+  const msg = new Date(dateStr);
+  const now = new Date();
+  const msgDay = new Date(msg.getFullYear(), msg.getMonth(), msg.getDate());
+  const today  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff   = Math.round((today - msgDay) / (1000 * 60 * 60 * 24));
+
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  if (msg.getFullYear() === now.getFullYear()) {
+    return msg.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  }
+  return msg.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+}
+
+function DateSeparator({ label }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0", userSelect: "none" }}>
+      <div style={{ flex: 1, height: 0.5, background: "rgba(255,255,255,0.08)" }} />
+      <span style={{ fontSize: 10, fontWeight: 500, color: "#5050a0", whiteSpace: "nowrap" }}>
+        {label}
+      </span>
+      <div style={{ flex: 1, height: 0.5, background: "rgba(255,255,255,0.08)" }} />
+    </div>
+  );
+}
+
+// ── Existing helpers ──────────────────────────────────────────────────────────
 function formatTime(dateStr) {
   if (!dateStr) return "";
   return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -26,12 +60,10 @@ export default function DMPanel() {
   const bottomRef             = useRef(null);
   const inputRef              = useRef(null);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [dmMessages]);
 
-  // Focus input when DM opens
   useEffect(() => {
     if (activeDM) {
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -41,7 +73,6 @@ export default function DMPanel() {
 
   if (!activeDM) return null;
 
-  // Find the other participant
   const other = activeDM.participants?.find(
     (p) => (p.user?._id || p.user) !== me?._id
   )?.user || {};
@@ -64,22 +95,47 @@ export default function DMPanel() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
+  // ── Build items list with date separators ───────────────────────────────────
+  const items = [];
+  let lastDayKey = null;
+
+  for (let i = 0; i < dmMessages.length; i++) {
+    const msg = dmMessages[i];
+    const dateStr = msg.createdAt;
+    const dayKey  = getDayKey(dateStr);
+
+    if (dayKey !== lastDayKey) {
+      items.push({ type: "separator", key: `sep-${dayKey}`, label: getDayLabel(dateStr) });
+      lastDayKey = dayKey;
+    }
+
+    const prev = dmMessages[i - 1];
+    const prevDateStr = prev?.createdAt;
+    const isMine = (msg.sender?._id || msg.sender) === me?._id;
+    const isConsecutive =
+      prev &&
+      getDayKey(prevDateStr) === dayKey &&
+      (prev.sender?._id || prev.sender) === (msg.sender?._id || msg.sender) &&
+      new Date(dateStr) - new Date(prevDateStr) < 5 * 60 * 1000;
+
+    items.push({ type: "message", key: msg._id, msg, isMine, isConsecutive });
+  }
+
   return (
     <>
-      {/* Backdrop for mobile / click-outside */}
       <div style={{ position: "fixed", inset: 0, zIndex: 59 }} onClick={closeDM} />
 
-      {/* DM window */}
-      <div style={{
-        position: "fixed", bottom: 24, right: 24,
-        width: 360, height: 500, zIndex: 60,
-        background: "#1e1e2e",
-        border: "0.5px solid rgba(255,255,255,0.12)",
-        borderRadius: 14,
-        display: "flex", flexDirection: "column",
-        boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
-        overflow: "hidden",
-      }}
+      <div
+        style={{
+          position: "fixed", bottom: 24, right: 24,
+          width: 360, height: 500, zIndex: 60,
+          background: "#1e1e2e",
+          border: "0.5px solid rgba(255,255,255,0.12)",
+          borderRadius: 14,
+          display: "flex", flexDirection: "column",
+          boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+          overflow: "hidden",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -89,7 +145,6 @@ export default function DMPanel() {
           display: "flex", alignItems: "center", gap: 10,
           flexShrink: 0, background: "#252538",
         }}>
-          {/* Avatar */}
           <div style={{ position: "relative", flexShrink: 0 }}>
             <div style={{
               width: 32, height: 32, borderRadius: 8,
@@ -136,19 +191,19 @@ export default function DMPanel() {
               <p style={{ fontSize: 12, color: "#6060a0" }}>Start a conversation with {otherName}</p>
             </div>
           )}
-          {dmMessages.map((msg, i) => {
-            const isMine = (msg.sender?._id || msg.sender) === me?._id;
-            const prev   = dmMessages[i - 1];
-            const isConsecutive = prev && (prev.sender?._id || prev.sender) === (msg.sender?._id || msg.sender)
-              && new Date(msg.createdAt) - new Date(prev.createdAt) < 5 * 60 * 1000;
 
+          {items.map((item) => {
+            if (item.type === "separator") {
+              return <DateSeparator key={item.key} label={item.label} />;
+            }
+
+            const { msg, isMine, isConsecutive } = item;
             const senderUser = msg.sender || {};
             const sName = senderUser.displayName || senderUser.username || "Unknown";
             const sInit = sName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
             return (
               <div key={msg._id} style={{ display: "flex", flexDirection: isMine ? "row-reverse" : "row", gap: 7, alignItems: "flex-end" }}>
-                {/* Avatar — only for first in group */}
                 {!isConsecutive && !isMine && (
                   <div style={{ width: 26, height: 26, borderRadius: 6, background: senderUser.avatarColor || "#5d5fe8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 600, color: "#fff", flexShrink: 0, overflow: "hidden" }}>
                     {senderUser.avatar ? <img src={senderUser.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : sInit}

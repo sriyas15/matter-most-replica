@@ -54,7 +54,6 @@ export default function MessageInput({ channelName = "general" }) {
 
   const handleChange = (e) => {
     setValue(e.target.value);
-    console.log("[input] calling onType");
     onType();
   };
 

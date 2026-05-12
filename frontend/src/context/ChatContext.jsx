@@ -59,7 +59,6 @@ export function ChatProvider({ children }) {
     const onTypingStart = ({ userId: uid, displayName, channelId: cid }) => {
       if (uid?.toString() === user?._id?.toString()) return;
       if (cid?.toString() !== channelId?.toString()) return;
-        console.log("[onTypingStart] uid:", uid, "| displayName:", displayName);
       setTypingUsers((prev) =>
         prev.find((u) => u.uid === uid) ? prev : [...prev, { uid, displayName }]
       );
@@ -88,10 +87,6 @@ export function ChatProvider({ children }) {
     socket.on("message:typing", onTypingStart);
     socket.on("message:stop_typing", onTypingStop);
     socket.on("message:reaction_updated", onReactionUpdated);
-
-    socket.on("message:typing", (data) => {
-  console.log("[raw typing]", data);
-});
 
     // 3. Join room — listeners are live so no messages will be missed
     socket.emit("channel:join", { channelId });
@@ -162,10 +157,7 @@ export function ChatProvider({ children }) {
  return (
   <ChatContext.Provider value={{
     messages, 
-    typingUsers: typingUsers.map((u) => {
-      console.log("[typingUsers map] u:", u);
-      return u.displayName;
-    }),
+    typingUsers: typingUsers.map((u) => u.displayName),
     hasMore, loadingMsgs,
     sendMessage, loadMoreMessages, emitTyping,
   }}>
