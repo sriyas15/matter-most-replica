@@ -39,8 +39,6 @@ export default function MessageItem({ message, isConsecutive }) {
   const isMine = message.sender?._id === user?._id || message.sender === user?._id;
 
   const sender = message.sender || {};
-  console.log(user)
-  console.log(sender)
   const name = sender.displayName || sender.name || sender.username || "Unknown";
   const time = formatTime(message.createdAt || message.timestamp);
 
@@ -142,7 +140,7 @@ export default function MessageItem({ message, isConsecutive }) {
       onMouseLeave={() => setHovered(false)}
     >
       {/* Avatar */}
-      <Avatar user={sender} size={32} showStatus />
+      <Avatar user={user} size={32} showStatus />
 
       <div className="flex-1 min-w-0">
         {/* ── FIX: meta row contains name + time + actions together ── */}
