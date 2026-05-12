@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { useWorkspace } from "../context/WorkspaceContext";
-import { useAuth } from "../context/AuthContext";
-import { useDM } from "../context/DMContext";
-import { getSocket } from "../lib/socket/socket";
-import api from "../lib/api";
-import CreateChannelModal from "./CreateChannelModal";
-import NewDMModal from "./NewDMModal";
-import CreateWorkspaceModal from "./CreateWorkspaceModal";
-import MembersPanel from "./MembersPanel";
+import { useWorkspace }         from "../context/WorkspaceContext";
+import { useAuth }              from "../context/AuthContext";
+import { useDM }                from "../context/DMContext";
+import { getSocket }            from "../lib/socket/socket";
+import api                      from "../lib/api";
+import CreateChannelModal       from "./CreateChannelModal";
+import NewDMModal               from "./NewDMModal";
+import CreateWorkspaceModal     from "./CreateWorkspaceModal";
+import MembersPanel             from "./MembersPanel";
 
 const STATUS_COLOR = { online: "#3db87a", away: "#f0a22a", dnd: "#e53e3e", offline: "#6060a0" };
 
@@ -15,12 +15,12 @@ const STATUS_COLOR = { online: "#3db87a", away: "#f0a22a", dnd: "#e53e3e", offli
 function WorkspaceSettingsModal({ onClose }) {
   const { activeWorkspace, selectWorkspace, workspaces } = useWorkspace();
   const [form, setForm] = useState({
-    name: activeWorkspace?.name || "",
+    name:        activeWorkspace?.name        || "",
     description: activeWorkspace?.description || "",
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [loading, setLoading]   = useState(false);
+  const [error, setError]       = useState("");
+  const [success, setSuccess]   = useState("");
 
   const flash = (msg) => { setSuccess(msg); setTimeout(() => setSuccess(""), 2500); };
 
@@ -28,7 +28,7 @@ function WorkspaceSettingsModal({ onClose }) {
     setError(""); setLoading(true);
     try {
       const { data } = await api.patch(`/workspaces/${activeWorkspace._id}`, {
-        name: form.name,
+        name:        form.name,
         description: form.description,
       });
       // Refresh active workspace in context with updated data
@@ -48,7 +48,7 @@ function WorkspaceSettingsModal({ onClose }) {
           <button onClick={onClose} style={closeBtnStyle}><i className="ti ti-x" /></button>
         </div>
 
-        {error && <div style={errorStyle}>{error}</div>}
+        {error   && <div style={errorStyle}>{error}</div>}
         {success && <div style={successStyle}>✓ {success}</div>}
 
         {/* Workspace icon */}
@@ -108,7 +108,7 @@ function WorkspaceSettingsModal({ onClose }) {
 function LeaveWorkspaceModal({ onClose }) {
   const { activeWorkspace, workspaces, selectWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
 
   const handleLeave = async () => {
     setLoading(true); setError("");
@@ -162,32 +162,23 @@ function LeaveWorkspaceModal({ onClose }) {
 }
 
 // ── Workspace name dropdown ───────────────────────────────────────────────────
-function WorkspaceDropdown({ headerRef, onClose, onCreateTeam, onMembers, onSettings, onLeave }) {
+function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLeave }) {
   const ref = useRef(null);
 
   // Close on outside click
   useEffect(() => {
-    const h = (e) => {
-      if (
-        ref.current &&
-        !ref.current.contains(e.target) &&
-        headerRef.current &&
-        !headerRef.current.contains(e.target)
-      ) {
-        onClose();
-      }
-    };
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [onClose]);
 
   const items = [
-    { icon: "ti-users", label: "Members", action: onMembers, color: "#a0a0c0" },
-    { icon: "ti-plus", label: "Create Team", action: onCreateTeam, color: "#a0a0c0" },
+    { icon: "ti-users",       label: "Members",        action: onMembers,    color: "#a0a0c0" },
+    { icon: "ti-plus",        label: "Create Team",    action: onCreateTeam, color: "#a0a0c0" },
     { divider: true },
-    { icon: "ti-settings", label: "Team Settings", action: onSettings, color: "#a0a0c0" },
+    { icon: "ti-settings",   label: "Team Settings",  action: onSettings,   color: "#a0a0c0" },
     { divider: true },
-    { icon: "ti-door-exit", label: "Leave Team", action: onLeave, color: "#f87171" },
+    { icon: "ti-door-exit",  label: "Leave Team",     action: onLeave,      color: "#f87171" },
   ];
 
   return (
@@ -252,7 +243,7 @@ function ChannelItem({ channel, active, onClick, unread }) {
     try {
       await api.patch(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`, { isFavorited: !channel.isFavorited });
       updateChannel({ ...channel, isFavorited: !channel.isFavorited });
-    } catch { }
+    } catch {}
   };
 
   const handleMute = async (e) => {
@@ -260,7 +251,7 @@ function ChannelItem({ channel, active, onClick, unread }) {
     try {
       await api.patch(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`, { isMuted: !channel.isMuted });
       updateChannel({ ...channel, isMuted: !channel.isMuted });
-    } catch { }
+    } catch {}
   };
 
   return (
@@ -302,9 +293,9 @@ function DMItem({ dm, active, onClick }) {
     (p) => (p.user?._id || p.user) !== me?._id
   )?.user || {};
 
-  const name = other.displayName || other.username || "Unknown";
+  const name     = other.displayName || other.username || "Unknown";
   const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-  const unread = dmUnread[dm._id] || 0;
+  const unread   = dmUnread[dm._id] || 0;
 
   return (
     <div onClick={onClick} style={{ ...S.channelItem, ...(active ? S.channelActive : {}) }}>
@@ -324,22 +315,22 @@ function DMItem({ dm, active, onClick }) {
 
 // ── Main sidebar ──────────────────────────────────────────────────────────────
 export default function ChannelSidebar() {
-  const { user } = useAuth();
-  const { activeWorkspace, channels, activeChannel, selectChannel } = useWorkspace();
-  const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread } = useDM();
+  const { user }                                                       = useAuth();
+  const { activeWorkspace, channels, activeChannel, selectChannel }    = useWorkspace();
+  const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread }     = useDM();
 
-  const [collapsed, setCollapsed] = useState({});
-  const [unreadMap, setUnreadMap] = useState({});
-  const [search, setSearch] = useState("");
-  const [showCreateChannel, setShowCC] = useState(false);
-  const [showNewDM, setShowDM] = useState(false);
+  const [collapsed, setCollapsed]       = useState({});
+  const [unreadMap, setUnreadMap]       = useState({});
+  const [search, setSearch]             = useState("");
+  const [showCreateChannel, setShowCC]  = useState(false);
+  const [showNewDM, setShowDM]          = useState(false);
 
   // Dropdown state
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen]     = useState(false);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
-  const [showMembers, setShowMembers] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showLeave, setShowLeave] = useState(false);
+  const [showMembers, setShowMembers]       = useState(false);
+  const [showSettings, setShowSettings]     = useState(false);
+  const [showLeave, setShowLeave]           = useState(false);
 
   const headerRef = useRef(null);
 
@@ -365,12 +356,12 @@ export default function ChannelSidebar() {
     selectChannel(ch);
     setUnreadMap((p) => ({ ...p, [ch._id]: 0 }));
     if (activeWorkspace)
-      api.patch(`/workspaces/${activeWorkspace._id}/channels/${ch._id}/read`).catch(() => { });
+      api.patch(`/workspaces/${activeWorkspace._id}/channels/${ch._id}/read`).catch(() => {});
   };
 
-  const publicChannels = channels.filter((c) => ["public", "private"].includes(c.type));
+  const publicChannels   = channels.filter((c) => ["public", "private"].includes(c.type));
   const favoriteChannels = channels.filter((c) => c.isFavorited);
-  const filtered = search.trim()
+  const filtered         = search.trim()
     ? publicChannels.filter((c) => (c.displayName || c.name).toLowerCase().includes(search.toLowerCase()))
     : publicChannels;
 
@@ -402,15 +393,14 @@ export default function ChannelSidebar() {
           </button>
 
           <div style={S.headerActions}>
-            <button style={S.headerBtn} title="New DM" onClick={() => setShowDM(true)}>
-              <i className="ti ti-edit" />
+            <button style={S.headerBtn} title="New Channel" onClick={() => setShowCC(true)}>
+              <i className="ti ti-plus" />
             </button>
           </div>
 
           {/* Dropdown */}
           {dropdownOpen && (
             <WorkspaceDropdown
-              headerRef={headerRef}
               onClose={() => setDropdownOpen(false)}
               onCreateTeam={() => setShowCreateTeam(true)}
               onMembers={() => setShowMembers(true)}
@@ -483,10 +473,10 @@ export default function ChannelSidebar() {
 
       {/* ── Modals ── */}
       {showCreateChannel && <CreateChannelModal open onClose={() => setShowCC(false)} />}
-      {showNewDM && <NewDMModal open onClose={() => setShowDM(false)} />}
-      {showCreateTeam && <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />}
-      {showSettings && <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />}
-      {showLeave && <LeaveWorkspaceModal onClose={() => setShowLeave(false)} />}
+      {showNewDM         && <NewDMModal         open onClose={() => setShowDM(false)} />}
+      {showCreateTeam    && <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />}
+      {showSettings      && <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />}
+      {showLeave         && <LeaveWorkspaceModal    onClose={() => setShowLeave(false)} />}
 
       {/* Members panel — slides in from right */}
       {showMembers && (
@@ -530,9 +520,9 @@ const successStyle = {
   background: "rgba(61,184,122,0.12)", border: "0.5px solid rgba(61,184,122,0.3)",
   borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "#6ee7b7", marginBottom: 16,
 };
-const fieldStyle = { display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 };
-const labelStyle = { fontSize: 12, fontWeight: 500, color: "#8080a8" };
-const inputStyle = {
+const fieldStyle  = { display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 };
+const labelStyle  = { fontSize: 12, fontWeight: 500, color: "#8080a8" };
+const inputStyle  = {
   width: "100%", background: "rgba(255,255,255,0.05)",
   border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8,
   padding: "9px 12px", fontSize: 13, color: "#e0e0f0",
@@ -551,26 +541,26 @@ const submitBtnStyle = {
 
 // ── Sidebar styles ────────────────────────────────────────────────────────────
 const S = {
-  sidebar: { width: 240, background: "#1e1e2e", display: "flex", flexDirection: "column", borderRight: "0.5px solid rgba(255,255,255,0.07)", height: "100vh", flexShrink: 0 },
-  header: { padding: "14px 14px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid rgba(255,255,255,0.07)" },
+  sidebar:       { width: 240, background: "#1e1e2e", display: "flex", flexDirection: "column", borderRight: "0.5px solid rgba(255,255,255,0.07)", height: "100vh", flexShrink: 0 },
+  header:        { padding: "14px 14px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid rgba(255,255,255,0.07)" },
   workspaceName: { fontSize: 14, fontWeight: 500, color: "#e8e8f0", display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 },
   headerActions: { display: "flex", gap: 4, flexShrink: 0 },
-  headerBtn: { width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: "#8080a8", fontSize: 15, cursor: "pointer", border: "none", background: "transparent" },
-  searchWrap: { margin: "10px 10px 6px", position: "relative" },
-  searchIcon: { position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#6060a0", pointerEvents: "none" },
-  searchInput: { width: "100%", background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "6px 28px 6px 30px", fontSize: 12, color: "#c0c0d8", outline: "none", boxSizing: "border-box" },
-  nav: { flex: 1, overflowY: "auto", padding: "4px 0 12px" },
-  section: { marginBottom: 2 },
+  headerBtn:     { width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: "#8080a8", fontSize: 15, cursor: "pointer", border: "none", background: "transparent" },
+  searchWrap:    { margin: "10px 10px 6px", position: "relative" },
+  searchIcon:    { position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#6060a0", pointerEvents: "none" },
+  searchInput:   { width: "100%", background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "6px 28px 6px 30px", fontSize: 12, color: "#c0c0d8", outline: "none", boxSizing: "border-box" },
+  nav:           { flex: 1, overflowY: "auto", padding: "4px 0 12px" },
+  section:       { marginBottom: 2 },
   sectionHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px 4px" },
-  sectionTitle: { fontSize: 11, fontWeight: 500, color: "#7070a0", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4, cursor: "pointer", flex: 1 },
-  sectionAdd: { width: 20, height: 20, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "#6060a0", fontSize: 14, cursor: "pointer", border: "none", background: "transparent" },
-  channelItem: { display: "flex", alignItems: "center", gap: 8, padding: "4px 12px", cursor: "pointer", borderRadius: 4, margin: "0 6px", position: "relative" },
+  sectionTitle:  { fontSize: 11, fontWeight: 500, color: "#7070a0", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4, cursor: "pointer", flex: 1 },
+  sectionAdd:    { width: 20, height: 20, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "#6060a0", fontSize: 14, cursor: "pointer", border: "none", background: "transparent" },
+  channelItem:   { display: "flex", alignItems: "center", gap: 8, padding: "4px 12px", cursor: "pointer", borderRadius: 4, margin: "0 6px", position: "relative" },
   channelActive: { background: "rgba(93,95,232,0.2)" },
-  chIcon: { fontSize: 14, color: "#6060a0", width: 16, textAlign: "center", flexShrink: 0 },
-  chName: { fontSize: 13, color: "#8080a8", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  chNameActive: { color: "#d8d8f8", fontWeight: 500 },
-  chBadge: { background: "#5d5fe8", color: "#e0e0ff", fontSize: 10, padding: "1px 5px", borderRadius: 8, fontWeight: 500, flexShrink: 0 },
-  miniBtn: { width: 18, height: 18, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, padding: 0 },
-  dmAvatar: { width: 18, height: 18, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 500, color: "#fff", position: "relative", overflow: "hidden" },
-  dmStatus: { width: 6, height: 6, borderRadius: "50%", position: "absolute", bottom: -1, right: -1, border: "1.5px solid #1e1e2e" },
+  chIcon:        { fontSize: 14, color: "#6060a0", width: 16, textAlign: "center", flexShrink: 0 },
+  chName:        { fontSize: 13, color: "#8080a8", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  chNameActive:  { color: "#d8d8f8", fontWeight: 500 },
+  chBadge:       { background: "#5d5fe8", color: "#e0e0ff", fontSize: 10, padding: "1px 5px", borderRadius: 8, fontWeight: 500, flexShrink: 0 },
+  miniBtn:       { width: 18, height: 18, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, padding: 0 },
+  dmAvatar:      { width: 18, height: 18, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 500, color: "#fff", position: "relative", overflow: "hidden" },
+  dmStatus:      { width: 6, height: 6, borderRadius: "50%", position: "absolute", bottom: -1, right: -1, border: "1.5px solid #1e1e2e" },
 };

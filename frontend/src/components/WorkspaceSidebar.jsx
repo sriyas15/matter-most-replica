@@ -5,14 +5,13 @@ import UserSettingsModal         from "./UserSettingsModal";
 import CreateWorkspaceModal      from "./CreateWorkspaceModal";
 import NotificationPanel         from "./NotificationPanel";
 import MentionsPanel             from "./MentionsPanel";
+import NewDMModal                from "./NewDMModal";
 import { useAuth }               from "../context/AuthContext";
 import { useWorkspace }          from "../context/WorkspaceContext";
 import { useDM }                 from "../context/DMContext";
 import { useNotifications }      from "../context/NotificationContext";
 import api                       from "../lib/api";
-import Avatar from "./ui/Avatar";
-
-const STATUS_COLOR = { online: "#22c55e", away: "#f59e0b", dnd: "#ef4444", offline: "#6b7280" };
+import Avatar                    from "./ui/Avatar";
 
 // ── Rail icon ─────────────────────────────────────────────────────────────────
 function RailIcon({ icon, label, badge = 0, active = false, onClick }) {
@@ -51,9 +50,9 @@ function RailIcon({ icon, label, badge = 0, active = false, onClick }) {
 export default function WorkspaceSidebar() {
   const { user, logout, updateUser, loading } = useAuth();
   const { activeWorkspace, workspaces, selectWorkspace } = useWorkspace();
-  const { totalDMUnread }         = useDM();
+  const { totalDMUnread }               = useDM();
   const { unreadCount, unreadMentions } = useNotifications();
-  const navigate                  = useNavigate();
+  const navigate                        = useNavigate();
 
   const [active, setActive]             = useState("Home");
   const [showMenu, setShowMenu]         = useState(false);
@@ -61,11 +60,9 @@ export default function WorkspaceSidebar() {
   const [showCreateWS, setShowCreateWS] = useState(false);
   const [showNotifs, setShowNotifs]     = useState(false);
   const [showMentions, setShowMentions] = useState(false);
+  const [showNewDM, setShowNewDM]       = useState(false);
 
   if (loading || !user) return null;
-
-  const initials = (user.displayName || user.username || "?")
-    .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   const handleLogout = async () => {
     setShowMenu(false);
@@ -93,6 +90,11 @@ export default function WorkspaceSidebar() {
     setActive("Mentions");
   };
 
+  const openNewDM = () => {
+    setActive("Direct Messages");
+    setShowNewDM(true);
+  };
+
   return (
     <div className="flex h-screen relative">
       {/* ── Icon Rail ── */}
@@ -118,13 +120,13 @@ export default function WorkspaceSidebar() {
           onClick={openNotifs}
         />
 
-        {/* Direct Messages */}
+        {/* Direct Messages — opens NewDMModal */}
         <RailIcon
           icon="ti-message-circle"
-          label="Direct Messages"
+          label="Direct Message"
           badge={totalDMUnread}
           active={active === "Direct Messages"}
-          onClick={() => setActive("Direct Messages")}
+          onClick={openNewDM}
         />
 
         {/* Mentions */}
@@ -136,23 +138,7 @@ export default function WorkspaceSidebar() {
           onClick={openMentions}
         />
 
-        {/* Saved */}
-        <RailIcon
-          icon="ti-bookmark"
-          label="Saved"
-          active={active === "Saved"}
-          onClick={() => setActive("Saved")}
-        />
-
         <div className="w-6 h-px my-1" style={{ background: "rgba(255,255,255,0.1)" }} />
-
-        {/* Search */}
-        <RailIcon
-          icon="ti-search"
-          label="Search"
-          active={active === "Search"}
-          onClick={() => setActive("Search")}
-        />
 
         <div className="flex-1" />
 
@@ -200,32 +186,8 @@ export default function WorkspaceSidebar() {
 
         {/* Profile avatar */}
         <div style={{ position: "relative", marginBottom: 4 }}>
-          {/* <div
-            title={user.displayName || "Profile"}
-            onClick={() => setShowMenu((p) => !p)}
-            style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: user.avatarColor || "#5d5fe8",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 11, fontWeight: 600, color: "#fff",
-              cursor: "pointer", overflow: "hidden",
-            }}
-          >
-            {user.avatar
-              ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              : initials}
-          </div>
+          <Avatar user={user} size={32} onClick={() => setShowMenu((p) => !p)} />
 
-          
-          <span style={{
-            position: "absolute", bottom: -1, right: -1,
-            width: 10, height: 10, borderRadius: "50%",
-            border: "2px solid #1a1a2a",
-            background: STATUS_COLOR[user.status] || STATUS_COLOR.offline,}}
-             /> */}
-          <Avatar user={user} size={32} onClick={() => setShowMenu((p) => !p)}/>
-
-          {/* Dropdown */}
           {showMenu && (
             <div style={{
               position: "absolute", bottom: 40, left: 40,
@@ -295,7 +257,7 @@ export default function WorkspaceSidebar() {
 
       <ChannelSidebar />
 
-      {/* Backdrop for menu */}
+      {/* Backdrop for avatar menu */}
       {showMenu && (
         <div style={{ position: "fixed", inset: 0, zIndex: 99 }} onClick={() => setShowMenu(false)} />
       )}
@@ -307,6 +269,7 @@ export default function WorkspaceSidebar() {
       {/* Modals */}
       <UserSettingsModal    open={showSettings}  onClose={() => setShowSettings(false)} />
       <CreateWorkspaceModal open={showCreateWS}  onClose={() => setShowCreateWS(false)} />
+      <NewDMModal           open={showNewDM}     onClose={() => { setShowNewDM(false); setActive("Home"); }} />
     </div>
   );
 }

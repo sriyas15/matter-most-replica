@@ -68,9 +68,9 @@ export default function MessageItem({ message, isConsecutive }) {
   };
 
   const reactionMap = (reactions || []).reduce((acc, r) => {
-  acc[r.emoji] = r;
-  return acc;
-}, {});
+    acc[r.emoji] = r;
+    return acc;
+  }, {});
 
   if (isConsecutive) {
     return (
@@ -79,7 +79,6 @@ export default function MessageItem({ message, isConsecutive }) {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
-        {/* Avatar spacer — timestamp lives here so it aligns with non-consecutive avatar column */}
         <div className="w-8 shrink-0 flex items-center justify-center">
           {hovered && (
             <span className="text-[10px] text-[#8080a8] leading-none whitespace-nowrap">
@@ -94,14 +93,10 @@ export default function MessageItem({ message, isConsecutive }) {
               value={editText}
               onChange={setEditText}
               onSave={handleEdit}
-              onCancel={() => {
-                setEditing(false);
-                setEditText(message.text);
-              }}
+              onCancel={() => { setEditing(false); setEditText(message.text); }}
             />
           ) : (
             <>
-              {/* Actions row — same height as non-consecutive meta row */}
               <div className="flex items-baseline gap-2 mb-[3px] h-[18px]">
                 {hovered && (
                   <>
@@ -123,11 +118,7 @@ export default function MessageItem({ message, isConsecutive }) {
             </>
           )}
 
-          <ReactionRow
-            reactions={reactionMap}
-            onReact={handleReact}
-            userId={user?._id}
-          />
+          <ReactionRow reactions={reactionMap} onReact={handleReact} userId={user?._id} />
         </div>
       </div>
     );
@@ -139,18 +130,15 @@ export default function MessageItem({ message, isConsecutive }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Avatar */}
-      <Avatar user={user} size={32} showStatus />
+      <Avatar user={sender} size={32} showStatus />
 
       <div className="flex-1 min-w-0">
-        {/* ── FIX: meta row contains name + time + actions together ── */}
         <div className="flex items-baseline gap-2 mb-[3px]">
           <span className="text-[13px] font-medium text-[#d8d8f0]">{name}</span>
           <span className="text-[11px] text-[#8080a8]">{time}</span>
           {message.isEdited && (
             <span className="text-[10px] text-[#8080a8]">(edited)</span>
           )}
-          {/* Actions appear inline, right after timestamp */}
           {hovered && !editing && (
             <MessageActions
               isMine={isMine}
@@ -166,10 +154,7 @@ export default function MessageItem({ message, isConsecutive }) {
             value={editText}
             onChange={setEditText}
             onSave={handleEdit}
-            onCancel={() => {
-              setEditing(false);
-              setEditText(message.text);
-            }}
+            onCancel={() => { setEditing(false); setEditText(message.text); }}
           />
         ) : (
           <p className="text-[13px] text-[#a0a0c0] leading-relaxed break-words">
@@ -177,11 +162,7 @@ export default function MessageItem({ message, isConsecutive }) {
           </p>
         )}
 
-        <ReactionRow
-          reactions={reactionMap}
-          onReact={handleReact}
-          userId={user?._id}
-        />
+        <ReactionRow reactions={reactionMap} onReact={handleReact} userId={user?._id} />
       </div>
     </div>
   );
@@ -195,26 +176,17 @@ function EditBox({ value, onChange, onSave, onCancel }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            onSave();
-          }
+          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSave(); }
           if (e.key === "Escape") onCancel();
         }}
         className="w-full bg-white/7 border border-[rgba(93,95,232,0.5)] rounded-[6px] px-[10px] py-[6px] text-[13px] text-[#d0d0f0] outline-none resize-none font-inherit box-border"
         rows={2}
       />
       <div className="flex gap-[6px] mt-1">
-        <button
-          onClick={onSave}
-          className="bg-[#5d5fe8] text-white border-none rounded px-[10px] py-[3px] text-[11px] cursor-pointer font-inherit"
-        >
+        <button onClick={onSave} className="bg-[#5d5fe8] text-white border-none rounded px-[10px] py-[3px] text-[11px] cursor-pointer font-inherit">
           Save
         </button>
-        <button
-          onClick={onCancel}
-          className="bg-white/8 text-[#a0a0c0] border-none rounded px-[10px] py-[3px] text-[11px] cursor-pointer font-inherit"
-        >
+        <button onClick={onCancel} className="bg-white/8 text-[#a0a0c0] border-none rounded px-[10px] py-[3px] text-[11px] cursor-pointer font-inherit">
           Cancel
         </button>
       </div>
@@ -250,25 +222,24 @@ function ReactionRow({ reactions, onReact, userId }) {
 
 function MessageActions({ isMine, onEdit, onDelete, onReact }) {
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [dotsOpen, setDotsOpen]   = useState(false);
 
   return (
-    // No longer absolute — flows inline inside the meta row / text row
     <div className="flex gap-[2px] bg-[#2a2a3e] border border-white/10 rounded-[6px] px-[4px] py-[2px] shrink-0 self-center">
+
+      {/* React */}
       <div className="relative">
         <ActionBtn
           icon="ti-mood-smile"
           label="React"
-          onClick={() => setEmojiOpen((p) => !p)}
+          onClick={() => { setEmojiOpen((p) => !p); setDotsOpen(false); }}
         />
         {emojiOpen && (
           <div className="absolute bottom-[110%] left-0 bg-[#2a2a3e] border border-white/12 rounded-[8px] p-[6px_8px] flex gap-[2px] z-50 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
             {QUICK_EMOJIS.map((e) => (
               <button
                 key={e}
-                onClick={() => {
-                  onReact(e);
-                  setEmojiOpen(false);
-                }}
+                onClick={() => { onReact(e); setEmojiOpen(false); }}
                 className="bg-none border-none text-[18px] cursor-pointer p-[2px_3px] rounded"
               >
                 {e}
@@ -277,16 +248,43 @@ function MessageActions({ isMine, onEdit, onDelete, onReact }) {
           </div>
         )}
       </div>
-      {isMine && <ActionBtn icon="ti-pencil" label="Edit" onClick={onEdit} />}
-      {isMine && (
+
+      {/* Three dots → edit & delete */}
+      <div className="relative">
         <ActionBtn
-          icon="ti-trash"
-          label="Delete"
-          onClick={onDelete}
-          className="text-[#f87171]"
+          icon="ti-dots"
+          label="More"
+          onClick={() => { setDotsOpen((p) => !p); setEmojiOpen(false); }}
         />
-      )}
-      <ActionBtn icon="ti-dots" label="More" onClick={() => {}} />
+        {dotsOpen && (
+          <div
+            className="absolute bottom-[110%] right-0 bg-[#2a2a3e] border border-white/12 rounded-[8px] overflow-hidden z-50 shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
+            style={{ minWidth: 130 }}
+          >
+            {isMine ? (
+              <>
+                <button
+                  onClick={() => { onEdit(); setDotsOpen(false); }}
+                  className="w-full flex items-center gap-[8px] px-[12px] py-[8px] text-[12px] text-[#c0c0d8] bg-transparent border-none cursor-pointer hover:bg-white/6 transition-colors text-left font-inherit"
+                >
+                  <i className="ti ti-pencil text-[13px] text-[#7070a0]" />
+                  Edit
+                </button>
+                <button
+                  onClick={() => { onDelete(); setDotsOpen(false); }}
+                  className="w-full flex items-center gap-[8px] px-[12px] py-[8px] text-[12px] text-[#f87171] bg-transparent border-none cursor-pointer hover:bg-white/6 transition-colors text-left font-inherit"
+                >
+                  <i className="ti ti-trash text-[13px] text-[#f87171]" />
+                  Delete
+                </button>
+              </>
+            ) : (
+              <div className="px-[12px] py-[8px] text-[11px] text-[#5050a0]">No actions</div>
+            )}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
