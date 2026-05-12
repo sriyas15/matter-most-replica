@@ -19,53 +19,40 @@ function MentionRow({ n, onMarkRead }) {
   return (
     <div
       onClick={() => !n.isRead && onMarkRead(n._id)}
-      style={{
-        padding: "12px 16px",
-        borderBottom: "0.5px solid rgba(255,255,255,0.05)",
-        background: n.isRead ? "transparent" : "rgba(93,95,232,0.07)",
-        cursor: n.isRead ? "default" : "pointer",
-        transition: "background 0.15s",
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
-      onMouseLeave={(e) => e.currentTarget.style.background = n.isRead ? "transparent" : "rgba(93,95,232,0.07)"}
+      className={`px-4 py-3 border-b border-slate-100 transition-colors duration-150
+        ${n.isRead ? "bg-white cursor-default hover:bg-slate-50" : "bg-blue-50 cursor-pointer hover:bg-blue-100/70"}`}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+      <div className="flex items-center gap-2 mb-1.5">
         {/* Unread dot */}
-        {!n.isRead && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#5d5fe8", flexShrink: 0 }} />}
-        {n.isRead  && <div style={{ width: 6, flexShrink: 0 }} />}
+        {!n.isRead
+          ? <div className="w-1.5 h-1.5 rounded-full bg-blue-600 flex-shrink-0" />
+          : <div className="w-1.5 flex-shrink-0" />
+        }
 
         {/* Avatar */}
-        <div style={{
-          width: 24, height: 24, borderRadius: 6,
-          background: actor?.avatarColor || "#5d5fe8",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 9, fontWeight: 600, color: "#fff", overflow: "hidden", flexShrink: 0,
-        }}>
+        <div
+          className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-semibold text-white overflow-hidden flex-shrink-0"
+          style={{ background: actor?.avatarColor || "#2563eb" }}
+        >
           {actor?.avatar
-            ? <img src={actor.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ? <img src={actor.avatar} alt="" className="w-full h-full object-cover" />
             : actorInit}
         </div>
 
-        <span style={{ fontSize: 12, color: "#c0c0e0", fontWeight: 500 }}>{actorName}</span>
+        <span className="text-xs font-medium text-slate-700">{actorName}</span>
+
         {channel && (
-          <span style={{ fontSize: 11, color: "#5050a0" }}>in <span style={{ color: "#7070b0" }}>#{channel}</span></span>
+          <span className="text-[11px] text-slate-400">
+            in <span className="text-blue-600 font-medium">#{channel}</span>
+          </span>
         )}
-        <span style={{ fontSize: 10, color: "#40408080", marginLeft: "auto" }}>{timeAgo(n.createdAt)}</span>
+
+        <span className="text-[10px] text-slate-300 ml-auto">{timeAgo(n.createdAt)}</span>
       </div>
 
       {/* Message preview */}
       {n.preview && (
-        <div style={{
-          marginLeft: 14,
-          background: "rgba(93,95,232,0.1)",
-          border: "0.5px solid rgba(93,95,232,0.2)",
-          borderLeft: "2px solid #5d5fe8",
-          borderRadius: "0 6px 6px 0",
-          padding: "6px 10px",
-          fontSize: 12,
-          color: "#a0a0c0",
-          lineHeight: 1.5,
-        }}>
+        <div className="ml-3.5 bg-blue-50 border border-blue-100 border-l-2 border-l-blue-600 rounded-r-md px-2.5 py-1.5 text-xs text-slate-600 leading-relaxed">
           {n.preview}
         </div>
       )}
@@ -80,49 +67,43 @@ export default function MentionsPanel({ open, onClose }) {
 
   return (
     <>
-      <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={onClose} />
+      <div className="fixed inset-0 z-40" onClick={onClose} />
 
-      <div style={{
-        position: "fixed", top: 0, right: 0, bottom: 0,
-        width: 340, zIndex: 50,
-        background: "#1e1e2e",
-        borderLeft: "0.5px solid rgba(255,255,255,0.08)",
-        display: "flex", flexDirection: "column",
-        boxShadow: "-8px 0 32px rgba(0,0,0,0.4)",
-      }}>
+      <div className="fixed top-0 right-0 bottom-0 w-[340px] z-50 bg-white border-l border-slate-200 flex flex-col shadow-2xl">
         {/* Header */}
-        <div style={{ padding: "16px 16px 12px", borderBottom: "0.5px solid rgba(255,255,255,0.07)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div className="px-4 pt-4 pb-3 border-b border-slate-100 flex-shrink-0 flex items-center justify-between">
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#e0e0f0" }}>
-              Mentions
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-slate-800">Mentions</span>
               {unreadMentions > 0 && (
-                <span style={{ marginLeft: 8, background: "#5d5fe8", color: "#fff", fontSize: 10, padding: "1px 6px", borderRadius: 8, fontWeight: 700 }}>
+                <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                   {unreadMentions}
                 </span>
               )}
             </div>
-            <div style={{ fontSize: 11, color: "#5050a0", marginTop: 2 }}>
-              Where you were @mentioned
-            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">Where you were @mentioned</p>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#6060a0", cursor: "pointer", fontSize: 18 }}>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer text-lg leading-none"
+          >
             <i className="ti ti-x" />
           </button>
         </div>
 
         {/* List */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div className="flex-1 overflow-y-auto">
           {loading && (
-            <div style={{ textAlign: "center", padding: "40px 0" }}>
-              <span style={{ fontSize: 12, color: "#5050a0" }}>Loading…</span>
+            <div className="text-center py-10">
+              <span className="text-xs text-slate-400">Loading…</span>
             </div>
           )}
 
           {!loading && mentions.length === 0 && (
-            <div style={{ textAlign: "center", padding: "48px 20px" }}>
-              <div style={{ fontSize: 36, marginBottom: 12 }}>@</div>
-              <p style={{ fontSize: 13, color: "#5050a0" }}>No mentions yet</p>
-              <p style={{ fontSize: 11, color: "#40408080", marginTop: 4 }}>
+            <div className="text-center px-5 py-12">
+              <div className="text-4xl mb-3 text-slate-300 font-bold">@</div>
+              <p className="text-sm text-slate-400">No mentions yet</p>
+              <p className="text-[11px] text-slate-300 mt-1">
                 When someone @mentions you, it will appear here
               </p>
             </div>

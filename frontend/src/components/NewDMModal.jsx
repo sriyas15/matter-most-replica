@@ -5,11 +5,16 @@ import { useWorkspace } from "../context/WorkspaceContext";
 import { useDM }        from "../context/DMContext";
 import api              from "../lib/api";
 
-const STATUS_COLOR = { online: "#3db87a", away: "#f0a22a", dnd: "#e53e3e", offline: "#6060a0" };
+const STATUS_COLOR = {
+  online:  "bg-emerald-500",
+  away:    "bg-amber-400",
+  dnd:     "bg-red-500",
+  offline: "bg-slate-300",
+};
 
 export default function NewDMModal({ open, onClose }) {
-  const { activeWorkspace }     = useWorkspace();
-  const { openDMWithUser }      = useDM();
+  const { activeWorkspace } = useWorkspace();
+  const { openDMWithUser }  = useDM();
 
   const [query, setQuery]       = useState("");
   const [results, setResults]   = useState([]);
@@ -38,7 +43,9 @@ export default function NewDMModal({ open, onClose }) {
 
   const toggle = (user) => {
     setSelected((p) =>
-      p.find((u) => u._id === user._id) ? p.filter((u) => u._id !== user._id) : [...p, user]
+      p.find((u) => u._id === user._id)
+        ? p.filter((u) => u._id !== user._id)
+        : [...p, user]
     );
   };
 
@@ -49,7 +56,6 @@ export default function NewDMModal({ open, onClose }) {
       if (selected.length === 1) {
         await openDMWithUser(selected[0]);
       } else {
-        // Group DM
         await api.post(`/workspaces/${activeWorkspace._id}/dms/group`, {
           participantIds: selected.map((u) => u._id),
         });
@@ -68,14 +74,25 @@ export default function NewDMModal({ open, onClose }) {
 
       {/* Selected chips */}
       {selected.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {selected.map((u) => (
-            <div key={u._id} style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(93,95,232,0.2)", border: "0.5px solid rgba(93,95,232,0.4)", borderRadius: 20, padding: "3px 10px 3px 8px", fontSize: 12, color: "#c0c0f0" }}>
-              <div style={{ width: 16, height: 16, borderRadius: 4, background: u.avatarColor || "#5d5fe8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, color: "#fff", fontWeight: 600 }}>
+            <div
+              key={u._id}
+              className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 rounded-full py-1 pl-2 pr-2.5 text-xs text-blue-700"
+            >
+              <div
+                className="w-4 h-4 rounded flex items-center justify-center text-[8px] text-white font-semibold flex-shrink-0"
+                style={{ background: u.avatarColor || "#2563eb" }}
+              >
                 {(u.displayName || u.username || "?")[0].toUpperCase()}
               </div>
-              {u.displayName || u.username}
-              <button onClick={() => toggle(u)} style={{ background: "none", border: "none", color: "#8080c0", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 2 }}>×</button>
+              <span>{u.displayName || u.username}</span>
+              <button
+                onClick={() => toggle(u)}
+                className="text-blue-400 hover:text-blue-600 bg-transparent border-none cursor-pointer text-sm leading-none ml-0.5 p-0"
+              >
+                ×
+              </button>
             </div>
           ))}
         </div>
@@ -87,13 +104,13 @@ export default function NewDMModal({ open, onClose }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search by name or username…"
-        style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "9px 12px", fontSize: 13, color: "#e0e0f0", outline: "none", boxSizing: "border-box", marginBottom: 12 }}
+        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition mb-3 box-border"
       />
 
       {/* Results */}
-      <div style={{ maxHeight: 240, overflowY: "auto" }}>
+      <div className="max-h-60 overflow-y-auto">
         {results.length === 0 && query.trim() && (
-          <p style={{ fontSize: 12, color: "#5050a0", textAlign: "center", padding: "20px 0" }}>No users found</p>
+          <p className="text-xs text-slate-400 text-center py-5">No users found</p>
         )}
         {results.map((u) => {
           const isSel = !!selected.find((s) => s._id === u._id);
@@ -101,26 +118,34 @@ export default function NewDMModal({ open, onClose }) {
             <div
               key={u._id}
               onClick={() => toggle(u)}
-              style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: isSel ? "rgba(93,95,232,0.15)" : "transparent", marginBottom: 2, transition: "background 0.15s" }}
+              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer mb-0.5 transition-colors
+                ${isSel ? "bg-blue-50" : "hover:bg-slate-50"}`}
             >
               {/* Avatar */}
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: u.avatarColor || "#5d5fe8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 600, color: "#fff", overflow: "hidden" }}>
-                  {u.avatar ? <img src={u.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (u.displayName || u.username || "?").slice(0, 2).toUpperCase()}
+              <div className="relative flex-shrink-0">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold text-white overflow-hidden"
+                  style={{ background: u.avatarColor || "#2563eb" }}
+                >
+                  {u.avatar
+                    ? <img src={u.avatar} alt="" className="w-full h-full object-cover" />
+                    : (u.displayName || u.username || "?").slice(0, 2).toUpperCase()}
                 </div>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: STATUS_COLOR[u.status || "offline"], position: "absolute", bottom: -1, right: -1, border: "1.5px solid #1e1e30" }} />
+                <div className={`absolute -bottom-px -right-px w-2 h-2 rounded-full border-2 border-white ${STATUS_COLOR[u.status || "offline"]}`} />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, color: "#d8d8f0", fontWeight: 500 }}>{u.displayName || u.username}</div>
-                <div style={{ fontSize: 11, color: "#6060a0" }}>@{u.username}</div>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-700 truncate">{u.displayName || u.username}</p>
+                <p className="text-[11px] text-slate-400">@{u.username}</p>
               </div>
-              {isSel && <i className="ti ti-check" style={{ color: "#5d5fe8", fontSize: 16 }} />}
+
+              {isSel && <i className="ti ti-check text-blue-600 text-base" />}
             </div>
           );
         })}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+      <div className="flex justify-end gap-2 mt-4">
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
         <Button onClick={handleOpen} disabled={!selected.length || loading}>
           {loading ? "Opening…" : selected.length > 1 ? "Create Group DM" : "Open DM"}

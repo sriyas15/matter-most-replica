@@ -1,26 +1,31 @@
 import { useState, useRef, useEffect } from "react";
-import { useWorkspace }         from "../context/WorkspaceContext";
-import { useAuth }              from "../context/AuthContext";
-import { useDM }                from "../context/DMContext";
-import { getSocket }            from "../lib/socket/socket";
-import api                      from "../lib/api";
-import CreateChannelModal       from "./CreateChannelModal";
-import NewDMModal               from "./NewDMModal";
-import CreateWorkspaceModal     from "./CreateWorkspaceModal";
-import MembersPanel             from "./MembersPanel";
+import { useWorkspace } from "../context/WorkspaceContext";
+import { useAuth } from "../context/AuthContext";
+import { useDM } from "../context/DMContext";
+import { getSocket } from "../lib/socket/socket";
+import api from "../lib/api";
+import CreateChannelModal from "./CreateChannelModal";
+import NewDMModal from "./NewDMModal";
+import CreateWorkspaceModal from "./CreateWorkspaceModal";
+import MembersPanel from "./MembersPanel";
 
-const STATUS_COLOR = { online: "#3db87a", away: "#f0a22a", dnd: "#e53e3e", offline: "#6060a0" };
+const STATUS_COLOR = {
+  online: "bg-emerald-500",
+  away: "bg-amber-400",
+  dnd: "bg-red-500",
+  offline: "bg-slate-400",
+};
 
 // ── Workspace Settings Modal ──────────────────────────────────────────────────
 function WorkspaceSettingsModal({ onClose }) {
-  const { activeWorkspace, selectWorkspace, workspaces } = useWorkspace();
+  const { activeWorkspace, selectWorkspace } = useWorkspace();
   const [form, setForm] = useState({
-    name:        activeWorkspace?.name        || "",
+    name: activeWorkspace?.name || "",
     description: activeWorkspace?.description || "",
   });
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState("");
-  const [success, setSuccess]   = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const flash = (msg) => { setSuccess(msg); setTimeout(() => setSuccess(""), 2500); };
 
@@ -28,10 +33,9 @@ function WorkspaceSettingsModal({ onClose }) {
     setError(""); setLoading(true);
     try {
       const { data } = await api.patch(`/workspaces/${activeWorkspace._id}`, {
-        name:        form.name,
+        name: form.name,
         description: form.description,
       });
-      // Refresh active workspace in context with updated data
       selectWorkspace(data.data || { ...activeWorkspace, ...form });
       flash("Workspace updated");
     } catch (err) {
@@ -40,62 +44,70 @@ function WorkspaceSettingsModal({ onClose }) {
   };
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
-      <div style={{ ...modalStyle, maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div style={modalHeaderStyle}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "#e0e0f0" }}>Team Settings</span>
-          <button onClick={onClose} style={closeBtnStyle}><i className="ti ti-x" /></button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300]" onClick={onClose}>
+      <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-[15px] font-semibold text-slate-800">Team Settings</span>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors">
+            <i className="ti ti-x" />
+          </button>
         </div>
 
-        {error   && <div style={errorStyle}>{error}</div>}
-        {success && <div style={successStyle}>✓ {success}</div>}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-xs mb-4">{error}</div>
+        )}
+        {success && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg px-3 py-2 text-xs mb-4">✓ {success}</div>
+        )}
 
-        {/* Workspace icon */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-          <div style={{
-            width: 48, height: 48, borderRadius: 12,
-            background: activeWorkspace?.themeColor || "#5d5fe8",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 18, fontWeight: 700, color: "#fff",
-          }}>
+        <div className="flex items-center gap-3 mb-5">
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white overflow-hidden"
+            style={{ background: activeWorkspace?.themeColor || "#2563eb" }}
+          >
             {activeWorkspace?.logo
-              ? <img src={activeWorkspace.logo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }} />
+              ? <img src={activeWorkspace.logo} alt="" className="w-full h-full object-cover" />
               : (activeWorkspace?.name || "W").slice(0, 2).toUpperCase()}
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#d8d8f0" }}>{activeWorkspace?.name}</div>
-            <div style={{ fontSize: 11, color: "#5050a0" }}>/{activeWorkspace?.slug}</div>
+            <div className="text-sm font-semibold text-slate-800">{activeWorkspace?.name}</div>
+            <div className="text-xs text-blue-600">/{activeWorkspace?.slug}</div>
           </div>
         </div>
 
-        {/* Name */}
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Workspace Name</label>
+        <div className="flex flex-col gap-1.5 mb-4">
+          <label className="text-xs font-medium text-slate-500">Workspace Name</label>
           <input
             value={form.name}
             onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-            style={inputStyle}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
             placeholder="Acme Inc."
             maxLength={64}
           />
         </div>
 
-        {/* Description */}
-        <div style={fieldStyle}>
-          <label style={labelStyle}>Description <span style={{ color: "#4040a0" }}>(optional)</span></label>
+        <div className="flex flex-col gap-1.5 mb-5">
+          <label className="text-xs font-medium text-slate-500">
+            Description <span className="text-slate-400">(optional)</span>
+          </label>
           <textarea
             value={form.description}
             onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-            style={{ ...inputStyle, resize: "none", lineHeight: 1.5 }}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none leading-relaxed"
             placeholder="What does this workspace do?"
             rows={2}
           />
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-          <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
-          <button onClick={handleSave} disabled={loading || !form.name.trim()} style={submitBtnStyle}>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={loading || !form.name.trim()}
+            className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors font-medium"
+          >
             {loading ? "Saving…" : "Save Changes"}
           </button>
         </div>
@@ -108,13 +120,12 @@ function WorkspaceSettingsModal({ onClose }) {
 function LeaveWorkspaceModal({ onClose }) {
   const { activeWorkspace, workspaces, selectWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError] = useState("");
 
   const handleLeave = async () => {
     setLoading(true); setError("");
     try {
       await api.delete(`/workspaces/${activeWorkspace._id}/leave`);
-      // Switch to another workspace or clear
       const remaining = workspaces.filter((w) => w._id !== activeWorkspace._id);
       selectWorkspace(remaining[0] || null);
       onClose();
@@ -125,33 +136,39 @@ function LeaveWorkspaceModal({ onClose }) {
   };
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
-      <div style={{ ...modalStyle, maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
-        <div style={modalHeaderStyle}>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "#e0e0f0" }}>Leave Team</span>
-          <button onClick={onClose} style={closeBtnStyle}><i className="ti ti-x" /></button>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300]" onClick={onClose}>
+      <div className="bg-white rounded-xl w-full max-w-sm p-6 shadow-xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-[15px] font-semibold text-slate-800">Leave Team</span>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors">
+            <i className="ti ti-x" />
+          </button>
         </div>
 
-        {error && <div style={errorStyle}>{error}</div>}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-xs mb-4">{error}</div>
+        )}
 
-        {/* Warning icon */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "16px 0 20px" }}>
-          <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(239,68,68,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <i className="ti ti-door-exit" style={{ fontSize: 24, color: "#f87171" }} />
+        <div className="flex flex-col items-center gap-3 py-4 pb-5">
+          <div className="w-13 h-13 rounded-full bg-red-50 flex items-center justify-center">
+            <i className="ti ti-door-exit text-2xl text-red-500" />
           </div>
-          <p style={{ fontSize: 13, color: "#c0c0d8", textAlign: "center", lineHeight: 1.6, margin: 0 }}>
-            Are you sure you want to leave <strong style={{ color: "#e0e0f0" }}>{activeWorkspace?.name}</strong>?
+          <p className="text-sm text-slate-600 text-center leading-relaxed">
+            Are you sure you want to leave{" "}
+            <strong className="text-slate-800">{activeWorkspace?.name}</strong>?
             <br />
-            <span style={{ fontSize: 12, color: "#6060a0" }}>You'll need an invite to rejoin.</span>
+            <span className="text-xs text-slate-400">You'll need an invite to rejoin.</span>
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button onClick={onClose} style={cancelBtnStyle}>Cancel</button>
+        <div className="flex gap-2 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium">
+            Cancel
+          </button>
           <button
             onClick={handleLeave}
             disabled={loading}
-            style={{ ...submitBtnStyle, background: "#e53e3e" }}
+            className="px-4 py-2 text-sm text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors font-medium"
           >
             {loading ? "Leaving…" : "Leave Team"}
           </button>
@@ -165,7 +182,6 @@ function LeaveWorkspaceModal({ onClose }) {
 function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLeave }) {
   const ref = useRef(null);
 
-  // Close on outside click
   useEffect(() => {
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
     document.addEventListener("mousedown", h);
@@ -173,41 +189,31 @@ function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLea
   }, [onClose]);
 
   const items = [
-    { icon: "ti-users",       label: "Members",        action: onMembers,    color: "#a0a0c0" },
-    { icon: "ti-plus",        label: "Create Team",    action: onCreateTeam, color: "#a0a0c0" },
+    { icon: "ti-users",      label: "Members",      action: onMembers,    danger: false },
+    { icon: "ti-plus",       label: "Create Team",  action: onCreateTeam, danger: false },
     { divider: true },
-    { icon: "ti-settings",   label: "Team Settings",  action: onSettings,   color: "#a0a0c0" },
+    { icon: "ti-settings",   label: "Team Settings",action: onSettings,   danger: false },
     { divider: true },
-    { icon: "ti-door-exit",  label: "Leave Team",     action: onLeave,      color: "#f87171" },
+    { icon: "ti-door-exit",  label: "Leave Team",   action: onLeave,      danger: true  },
   ];
 
   return (
-    <div ref={ref} style={{
-      position: "absolute", top: "calc(100% + 4px)", left: 12, right: 12,
-      background: "#2a2a3e",
-      border: "0.5px solid rgba(255,255,255,0.12)",
-      borderRadius: 10, zIndex: 200,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-      overflow: "hidden",
-    }}>
+    <div
+      ref={ref}
+      className="absolute top-[calc(100%+4px)] left-3 right-3 bg-white border border-slate-200 rounded-xl z-[200] shadow-xl overflow-hidden"
+    >
       {items.map((item, i) =>
         item.divider ? (
-          <div key={i} style={{ height: 0.5, background: "rgba(255,255,255,0.07)", margin: "2px 0" }} />
+          <div key={i} className="h-px bg-slate-100 my-0.5" />
         ) : (
           <button
             key={i}
             onClick={() => { item.action(); onClose(); }}
-            style={{
-              width: "100%", display: "flex", alignItems: "center", gap: 9,
-              padding: "9px 12px", background: "transparent", border: "none",
-              color: item.color, fontSize: 13, cursor: "pointer", textAlign: "left",
-              transition: "background 0.12s",
-              fontFamily: "inherit",
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
-            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium bg-transparent border-none cursor-pointer text-left transition-colors hover:bg-slate-50 ${
+              item.danger ? "text-red-500" : "text-slate-600"
+            }`}
           >
-            <i className={`ti ${item.icon}`} style={{ fontSize: 15, width: 18, textAlign: "center" }} />
+            <i className={`ti ${item.icon} text-[15px] w-4.5 text-center`} />
             {item.label}
           </button>
         )
@@ -219,13 +225,19 @@ function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLea
 // ── Section header ────────────────────────────────────────────────────────────
 function SectionHeader({ title, collapsed, onToggle, onAdd }) {
   return (
-    <div style={S.sectionHeader}>
-      <div style={S.sectionTitle} onClick={onToggle}>
-        <i className={`ti ti-chevron-${collapsed ? "right" : "down"}`} style={{ fontSize: 11 }} />
+    <div className="flex items-center justify-between px-3 pt-1.5 pb-1">
+      <button
+        onClick={onToggle}
+        className="flex items-center gap-1 text-[10px] font-semibold text-blue-600 uppercase tracking-widest cursor-pointer bg-transparent border-none flex-1 text-left hover:text-blue-700 transition-colors"
+      >
+        <i className={`ti ti-chevron-${collapsed ? "right" : "down"} text-[10px]`} />
         {title}
-      </div>
+      </button>
       {onAdd && (
-        <button style={S.sectionAdd} onClick={onAdd}>
+        <button
+          onClick={onAdd}
+          className="w-5 h-5 rounded flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-50 text-sm border-none bg-transparent cursor-pointer transition-colors"
+        >
           <i className="ti ti-plus" />
         </button>
       )}
@@ -241,7 +253,9 @@ function ChannelItem({ channel, active, onClick, unread }) {
   const handleFavorite = async (e) => {
     e.stopPropagation();
     try {
-      await api.patch(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`, { isFavorited: !channel.isFavorited });
+      await api.patch(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`, {
+        isFavorited: !channel.isFavorited,
+      });
       updateChannel({ ...channel, isFavorited: !channel.isFavorited });
     } catch {}
   };
@@ -249,7 +263,9 @@ function ChannelItem({ channel, active, onClick, unread }) {
   const handleMute = async (e) => {
     e.stopPropagation();
     try {
-      await api.patch(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`, { isMuted: !channel.isMuted });
+      await api.patch(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`, {
+        isMuted: !channel.isMuted,
+      });
       updateChannel({ ...channel, isMuted: !channel.isMuted });
     } catch {}
   };
@@ -259,27 +275,53 @@ function ChannelItem({ channel, active, onClick, unread }) {
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ ...S.channelItem, ...(active ? S.channelActive : {}) }}
+      className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors ${
+        active ? "bg-blue-50" : "hover:bg-slate-50"
+      }`}
     >
-      <span style={S.chIcon}>
+      <span className="text-sm text-blue-500 w-4 text-center flex-shrink-0">
         <i className={`ti ${channel.type === "private" ? "ti-lock" : "ti-hash"}`} />
       </span>
-      <span style={{ ...S.chName, ...(active ? S.chNameActive : {}), ...(unread > 0 ? { color: "#d8d8f8", fontWeight: 500 } : {}) }}>
+      <span
+        className={`text-[13px] flex-1 truncate transition-colors ${
+          active
+            ? "text-blue-600 font-semibold"
+            : unread > 0
+            ? "text-blue-600 font-medium"
+            : "text-slate-500"
+        }`}
+      >
         {channel.displayName || channel.name}
       </span>
 
       {hovered && !active && (
-        <div style={{ display: "flex", gap: 1, marginLeft: "auto" }}>
-          <button onClick={handleFavorite} title={channel.isFavorited ? "Unfavorite" : "Favorite"} style={S.miniBtn}>
-            <i className={`ti ${channel.isFavorited ? "ti-star-filled" : "ti-star"}`} style={{ fontSize: 11, color: channel.isFavorited ? "#f0a22a" : "#6060a0" }} />
+        <div className="flex gap-0.5 ml-auto">
+          <button
+            onClick={handleFavorite}
+            title={channel.isFavorited ? "Unfavorite" : "Favorite"}
+            className="w-4.5 h-4.5 flex items-center justify-center bg-transparent border-none cursor-pointer rounded p-0"
+          >
+            <i
+              className={`ti ${channel.isFavorited ? "ti-star-filled" : "ti-star"} text-[11px] ${
+                channel.isFavorited ? "text-amber-400" : "text-slate-400 hover:text-amber-400"
+              }`}
+            />
           </button>
-          <button onClick={handleMute} title={channel.isMuted ? "Unmute" : "Mute"} style={S.miniBtn}>
-            <i className={`ti ${channel.isMuted ? "ti-bell-off" : "ti-bell"}`} style={{ fontSize: 11, color: "#6060a0" }} />
+          <button
+            onClick={handleMute}
+            title={channel.isMuted ? "Unmute" : "Mute"}
+            className="w-4.5 h-4.5 flex items-center justify-center bg-transparent border-none cursor-pointer rounded p-0"
+          >
+            <i className={`ti ${channel.isMuted ? "ti-bell-off" : "ti-bell"} text-[11px] text-slate-400 hover:text-blue-500`} />
           </button>
         </div>
       )}
 
-      {!hovered && unread > 0 && <span style={S.chBadge}>{unread > 99 ? "99+" : unread}</span>}
+      {!hovered && unread > 0 && (
+        <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
     </div>
   );
 }
@@ -289,50 +331,70 @@ function DMItem({ dm, active, onClick }) {
   const { user: me } = useAuth();
   const { dmUnread } = useDM();
 
-  const other = dm.participants?.find(
-    (p) => (p.user?._id || p.user) !== me?._id
-  )?.user || {};
+  const other =
+    dm.participants?.find((p) => (p.user?._id || p.user) !== me?._id)?.user || {};
 
-  const name     = other.displayName || other.username || "Unknown";
+  const name = other.displayName || other.username || "Unknown";
   const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-  const unread   = dmUnread[dm._id] || 0;
+  const unread = dmUnread[dm._id] || 0;
+  const statusClass = STATUS_COLOR[other.status || "offline"];
 
   return (
-    <div onClick={onClick} style={{ ...S.channelItem, ...(active ? S.channelActive : {}) }}>
-      <div style={{ ...S.dmAvatar, background: other.avatarColor || "#5d5fe8" }}>
-        {other.avatar
-          ? <img src={other.avatar} alt="" style={{ width: "100%", height: "100%", borderRadius: 4, objectFit: "cover" }} />
-          : initials}
-        <div style={{ ...S.dmStatus, background: STATUS_COLOR[other.status || "offline"] }} />
+    <div
+      onClick={onClick}
+      className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors ${
+        active ? "bg-blue-50" : "hover:bg-slate-50"
+      }`}
+    >
+      <div
+        className="w-[18px] h-[18px] rounded flex-shrink-0 flex items-center justify-center text-[9px] font-medium text-white relative overflow-visible"
+        style={{ background: other.avatarColor || "#2563eb" }}
+      >
+        {other.avatar ? (
+          <img src={other.avatar} alt="" className="w-full h-full rounded object-cover" />
+        ) : (
+          initials
+        )}
+        <div
+          className={`w-1.5 h-1.5 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-white ${statusClass}`}
+        />
       </div>
-      <span style={{ ...S.chName, ...(active ? S.chNameActive : {}), ...(unread > 0 ? { color: "#d8d8f8", fontWeight: 500 } : {}) }}>
+      <span
+        className={`text-[13px] flex-1 truncate ${
+          active
+            ? "text-blue-600 font-semibold"
+            : unread > 0
+            ? "text-blue-600 font-medium"
+            : "text-slate-500"
+        }`}
+      >
         {name}
       </span>
-      {unread > 0 && <span style={S.chBadge}>{unread > 99 ? "99+" : unread}</span>}
+      {unread > 0 && (
+        <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">
+          {unread > 99 ? "99+" : unread}
+        </span>
+      )}
     </div>
   );
 }
 
 // ── Main sidebar ──────────────────────────────────────────────────────────────
 export default function ChannelSidebar() {
-  const { user }                                                       = useAuth();
-  const { activeWorkspace, channels, activeChannel, selectChannel }    = useWorkspace();
-  const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread }     = useDM();
+  const { user } = useAuth();
+  const { activeWorkspace, channels, activeChannel, selectChannel } = useWorkspace();
+  const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread } = useDM();
 
-  const [collapsed, setCollapsed]       = useState({});
-  const [unreadMap, setUnreadMap]       = useState({});
-  const [search, setSearch]             = useState("");
-  const [showCreateChannel, setShowCC]  = useState(false);
-  const [showNewDM, setShowDM]          = useState(false);
-
-  // Dropdown state
-  const [dropdownOpen, setDropdownOpen]     = useState(false);
+  const [collapsed, setCollapsed] = useState({});
+  const [unreadMap, setUnreadMap] = useState({});
+  const [search, setSearch] = useState("");
+  const [showCreateChannel, setShowCC] = useState(false);
+  const [showNewDM, setShowDM] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
-  const [showMembers, setShowMembers]       = useState(false);
-  const [showSettings, setShowSettings]     = useState(false);
-  const [showLeave, setShowLeave]           = useState(false);
-
-  const headerRef = useRef(null);
+  const [showMembers, setShowMembers] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showLeave, setShowLeave] = useState(false);
 
   const toggle = (key) => setCollapsed((p) => ({ ...p, [key]: !p[key] }));
 
@@ -359,46 +421,44 @@ export default function ChannelSidebar() {
       api.patch(`/workspaces/${activeWorkspace._id}/channels/${ch._id}/read`).catch(() => {});
   };
 
-  const publicChannels   = channels.filter((c) => ["public", "private"].includes(c.type));
+  const publicChannels = channels.filter((c) => ["public", "private"].includes(c.type));
   const favoriteChannels = channels.filter((c) => c.isFavorited);
-  const filtered         = search.trim()
-    ? publicChannels.filter((c) => (c.displayName || c.name).toLowerCase().includes(search.toLowerCase()))
+  const filtered = search.trim()
+    ? publicChannels.filter((c) =>
+        (c.displayName || c.name).toLowerCase().includes(search.toLowerCase())
+      )
     : publicChannels;
 
   return (
     <>
-      <div style={S.sidebar}>
-        {/* ── Header with dropdown ── */}
-        <div ref={headerRef} style={{ ...S.header, position: "relative" }}>
+      <div className="w-[240px] bg-white flex flex-col border-r border-slate-200 h-screen flex-shrink-0">
+
+        {/* ── Header ── */}
+        <div className="px-3.5 py-3 flex items-center justify-between border-b border-slate-100 relative">
           <button
             onClick={() => setDropdownOpen((p) => !p)}
-            style={{
-              ...S.workspaceName,
-              background: "none", border: "none", cursor: "pointer",
-              padding: 0, fontFamily: "inherit",
-              color: dropdownOpen ? "#c0c0f8" : undefined,
-            }}
+            className="flex items-center gap-1.5 flex-1 min-w-0 bg-transparent border-none cursor-pointer p-0 text-left"
           >
-            <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span className="text-[14px] font-semibold text-slate-800 flex-1 truncate">
               {activeWorkspace?.name || "Loading…"}
             </span>
             <i
-              className="ti ti-chevron-down"
-              style={{
-                fontSize: 13, color: "#7070a0", flexShrink: 0,
-                transition: "transform 0.2s",
-                transform: dropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
-              }}
+              className={`ti ti-chevron-down text-[13px] text-blue-500 flex-shrink-0 transition-transform duration-200 ${
+                dropdownOpen ? "rotate-180" : ""
+              }`}
             />
           </button>
 
-          <div style={S.headerActions}>
-            <button style={S.headerBtn} title="New Channel" onClick={() => setShowCC(true)}>
+          <div className="flex gap-1 flex-shrink-0 ml-2">
+            <button
+              onClick={() => setShowCC(true)}
+              title="New Channel"
+              className="w-7 h-7 rounded-md flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 text-[15px] border-none bg-transparent cursor-pointer transition-colors"
+            >
               <i className="ti ti-plus" />
             </button>
           </div>
 
-          {/* Dropdown */}
           {dropdownOpen && (
             <WorkspaceDropdown
               onClose={() => setDropdownOpen(false)}
@@ -410,59 +470,96 @@ export default function ChannelSidebar() {
           )}
         </div>
 
-        {/* Search */}
-        <div style={S.searchWrap}>
-          <i className="ti ti-search" style={S.searchIcon} />
+        {/* ── Search ── */}
+        <div className="mx-2.5 my-2 relative">
+          <i className="ti ti-search absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-blue-400 pointer-events-none" />
           <input
-            style={S.searchInput}
+            className="w-full bg-slate-50 border border-slate-200 rounded-md py-1.5 pl-7 pr-7 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400 box-border"
             placeholder="Find channels, people…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           {search && (
-            <button onClick={() => setSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6060a0", cursor: "pointer", fontSize: 12, lineHeight: 1 }}>
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-transparent border-none text-slate-400 hover:text-slate-600 cursor-pointer text-xs leading-none p-0"
+            >
               <i className="ti ti-x" />
             </button>
           )}
         </div>
 
-        {/* Nav */}
-        <div style={S.nav}>
+        {/* ── Nav ── */}
+        <div className="flex-1 overflow-y-auto py-1">
+
+          {/* Favorites */}
           {favoriteChannels.length > 0 && (
-            <div style={S.section}>
-              <SectionHeader title="FAVORITES" collapsed={collapsed.favorites} onToggle={() => toggle("favorites")} />
-              {!collapsed.favorites && favoriteChannels.map((ch) => (
-                <ChannelItem key={ch._id} channel={ch} active={activeChannel?._id === ch._id}
-                  unread={unreadMap[ch._id] || 0} onClick={() => handleSelectChannel(ch)} />
-              ))}
+            <div className="mb-1">
+              <SectionHeader
+                title="Favorites"
+                collapsed={collapsed.favorites}
+                onToggle={() => toggle("favorites")}
+              />
+              {!collapsed.favorites &&
+                favoriteChannels.map((ch) => (
+                  <ChannelItem
+                    key={ch._id}
+                    channel={ch}
+                    active={activeChannel?._id === ch._id}
+                    unread={unreadMap[ch._id] || 0}
+                    onClick={() => handleSelectChannel(ch)}
+                  />
+                ))}
             </div>
           )}
 
-          <div style={S.section}>
-            <SectionHeader title="CHANNELS" collapsed={collapsed.channels} onToggle={() => toggle("channels")} onAdd={() => setShowCC(true)} />
-            {!collapsed.channels && filtered.map((ch) => (
-              <ChannelItem key={ch._id} channel={ch} active={activeChannel?._id === ch._id}
-                unread={unreadMap[ch._id] || 0} onClick={() => handleSelectChannel(ch)} />
-            ))}
+          {/* Channels */}
+          <div className="mb-1">
+            <SectionHeader
+              title="Channels"
+              collapsed={collapsed.channels}
+              onToggle={() => toggle("channels")}
+              onAdd={() => setShowCC(true)}
+            />
+            {!collapsed.channels &&
+              filtered.map((ch) => (
+                <ChannelItem
+                  key={ch._id}
+                  channel={ch}
+                  active={activeChannel?._id === ch._id}
+                  unread={unreadMap[ch._id] || 0}
+                  onClick={() => handleSelectChannel(ch)}
+                />
+              ))}
             {!collapsed.channels && filtered.length === 0 && search && (
-              <p style={{ fontSize: 12, color: "#5050a0", padding: "4px 18px" }}>No channels found</p>
+              <p className="text-xs text-slate-400 px-4 py-1">No channels found</p>
             )}
           </div>
 
-          <div style={S.section}>
+          {/* Direct Messages */}
+          <div className="mb-1">
             <SectionHeader
-              title={totalDMUnread > 0 ? `DIRECT MESSAGES · ${totalDMUnread}` : "DIRECT MESSAGES"}
+              title={totalDMUnread > 0 ? `Direct Messages · ${totalDMUnread}` : "Direct Messages"}
               collapsed={collapsed.dms}
               onToggle={() => toggle("dms")}
               onAdd={() => setShowDM(true)}
             />
-            {!collapsed.dms && dms.map((dm) => (
-              <DMItem key={dm._id} dm={dm} active={activeDM?._id === dm._id} onClick={() => selectDM(dm)} />
-            ))}
+            {!collapsed.dms &&
+              dms.map((dm) => (
+                <DMItem
+                  key={dm._id}
+                  dm={dm}
+                  active={activeDM?._id === dm._id}
+                  onClick={() => selectDM(dm)}
+                />
+              ))}
             {!collapsed.dms && dms.length === 0 && (
-              <p style={{ fontSize: 12, color: "#5050a0", padding: "4px 18px 8px" }}>
+              <p className="text-xs text-slate-400 px-4 py-1">
                 No direct messages yet.{" "}
-                <button onClick={() => setShowDM(true)} style={{ background: "none", border: "none", color: "#7070e8", cursor: "pointer", fontSize: 12, padding: 0, textDecoration: "underline" }}>
+                <button
+                  onClick={() => setShowDM(true)}
+                  className="bg-transparent border-none text-blue-500 hover:text-blue-700 cursor-pointer text-xs p-0 underline"
+                >
                   Start one
                 </button>
               </p>
@@ -473,12 +570,10 @@ export default function ChannelSidebar() {
 
       {/* ── Modals ── */}
       {showCreateChannel && <CreateChannelModal open onClose={() => setShowCC(false)} />}
-      {showNewDM         && <NewDMModal         open onClose={() => setShowDM(false)} />}
-      {showCreateTeam    && <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />}
-      {showSettings      && <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />}
-      {showLeave         && <LeaveWorkspaceModal    onClose={() => setShowLeave(false)} />}
-
-      {/* Members panel — slides in from right */}
+      {showNewDM && <NewDMModal open onClose={() => setShowDM(false)} />}
+      {showCreateTeam && <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />}
+      {showSettings && <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />}
+      {showLeave && <LeaveWorkspaceModal onClose={() => setShowLeave(false)} />}
       {showMembers && (
         <MembersPanel
           open={showMembers}
@@ -492,75 +587,3 @@ export default function ChannelSidebar() {
     </>
   );
 }
-
-// ── Shared modal styles ───────────────────────────────────────────────────────
-const overlayStyle = {
-  position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
-  display: "flex", alignItems: "center", justifyContent: "center",
-  zIndex: 300, backdropFilter: "blur(4px)",
-};
-const modalStyle = {
-  background: "#1e1e2e", border: "0.5px solid rgba(255,255,255,0.12)",
-  borderRadius: 12, width: "100%", padding: 24,
-  boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
-};
-const modalHeaderStyle = {
-  display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20,
-};
-const closeBtnStyle = {
-  background: "transparent", border: "none", color: "#6060a0",
-  fontSize: 18, cursor: "pointer", padding: 4, borderRadius: 6,
-  display: "flex", alignItems: "center",
-};
-const errorStyle = {
-  background: "rgba(239,68,68,0.15)", border: "0.5px solid rgba(239,68,68,0.3)",
-  color: "#f87171", borderRadius: 6, padding: "8px 12px", fontSize: 12, marginBottom: 16,
-};
-const successStyle = {
-  background: "rgba(61,184,122,0.12)", border: "0.5px solid rgba(61,184,122,0.3)",
-  borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "#6ee7b7", marginBottom: 16,
-};
-const fieldStyle  = { display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 };
-const labelStyle  = { fontSize: 12, fontWeight: 500, color: "#8080a8" };
-const inputStyle  = {
-  width: "100%", background: "rgba(255,255,255,0.05)",
-  border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8,
-  padding: "9px 12px", fontSize: 13, color: "#e0e0f0",
-  outline: "none", boxSizing: "border-box", fontFamily: "inherit",
-};
-const cancelBtnStyle = {
-  background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 7,
-  padding: "8px 16px", fontSize: 13, color: "#9090b0", cursor: "pointer",
-  fontFamily: "inherit",
-};
-const submitBtnStyle = {
-  background: "#5d5fe8", border: "none", borderRadius: 7,
-  padding: "8px 18px", fontSize: 13, color: "#fff", cursor: "pointer",
-  fontWeight: 500, fontFamily: "inherit",
-};
-
-// ── Sidebar styles ────────────────────────────────────────────────────────────
-const S = {
-  sidebar:       { width: 240, background: "#1e1e2e", display: "flex", flexDirection: "column", borderRight: "0.5px solid rgba(255,255,255,0.07)", height: "100vh", flexShrink: 0 },
-  header:        { padding: "14px 14px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid rgba(255,255,255,0.07)" },
-  workspaceName: { fontSize: 14, fontWeight: 500, color: "#e8e8f0", display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 },
-  headerActions: { display: "flex", gap: 4, flexShrink: 0 },
-  headerBtn:     { width: 28, height: 28, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", color: "#8080a8", fontSize: 15, cursor: "pointer", border: "none", background: "transparent" },
-  searchWrap:    { margin: "10px 10px 6px", position: "relative" },
-  searchIcon:    { position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#6060a0", pointerEvents: "none" },
-  searchInput:   { width: "100%", background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "6px 28px 6px 30px", fontSize: 12, color: "#c0c0d8", outline: "none", boxSizing: "border-box" },
-  nav:           { flex: 1, overflowY: "auto", padding: "4px 0 12px" },
-  section:       { marginBottom: 2 },
-  sectionHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 12px 4px" },
-  sectionTitle:  { fontSize: 11, fontWeight: 500, color: "#7070a0", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 4, cursor: "pointer", flex: 1 },
-  sectionAdd:    { width: 20, height: 20, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "#6060a0", fontSize: 14, cursor: "pointer", border: "none", background: "transparent" },
-  channelItem:   { display: "flex", alignItems: "center", gap: 8, padding: "4px 12px", cursor: "pointer", borderRadius: 4, margin: "0 6px", position: "relative" },
-  channelActive: { background: "rgba(93,95,232,0.2)" },
-  chIcon:        { fontSize: 14, color: "#6060a0", width: 16, textAlign: "center", flexShrink: 0 },
-  chName:        { fontSize: 13, color: "#8080a8", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  chNameActive:  { color: "#d8d8f8", fontWeight: 500 },
-  chBadge:       { background: "#5d5fe8", color: "#e0e0ff", fontSize: 10, padding: "1px 5px", borderRadius: 8, fontWeight: 500, flexShrink: 0 },
-  miniBtn:       { width: 18, height: 18, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, padding: 0 },
-  dmAvatar:      { width: 18, height: 18, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 500, color: "#fff", position: "relative", overflow: "hidden" },
-  dmStatus:      { width: 6, height: 6, borderRadius: "50%", position: "absolute", bottom: -1, right: -1, border: "1.5px solid #1e1e2e" },
-};

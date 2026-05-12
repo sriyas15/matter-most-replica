@@ -1,19 +1,19 @@
 import { useState, useRef } from "react";
-import { useChat }              from "../context/ChatContext";
-import { useTypingIndicator }   from "../hooks/useTypingIndicator";
+import { useChat }            from "../context/ChatContext";
+import { useTypingIndicator } from "../hooks/useTypingIndicator";
 
 const TOOLBAR_TOOLS = [
-  { icon: "ti-bold",         label: "Bold" },
-  { icon: "ti-italic",       label: "Italic" },
-  { icon: "ti-strikethrough",label: "Strikethrough" },
+  { icon: "ti-bold",          label: "Bold" },
+  { icon: "ti-italic",        label: "Italic" },
+  { icon: "ti-strikethrough", label: "Strikethrough" },
   null,
-  { icon: "ti-code",         label: "Code" },
-  { icon: "ti-link",         label: "Link" },
+  { icon: "ti-code",          label: "Code" },
+  { icon: "ti-link",          label: "Link" },
   null,
-  { icon: "ti-list-numbers", label: "Ordered list" },
-  { icon: "ti-list",         label: "Unordered list" },
+  { icon: "ti-list-numbers",  label: "Ordered list" },
+  { icon: "ti-list",          label: "Unordered list" },
   null,
-  { icon: "ti-blockquote",   label: "Quote" },
+  { icon: "ti-blockquote",    label: "Quote" },
 ];
 
 const FOOTER_TOOLS = [
@@ -23,11 +23,11 @@ const FOOTER_TOOLS = [
 ];
 
 export default function MessageInput({ channelName = "general" }) {
-  const { sendMessage }         = useChat();
-  const { onType, onStop }      = useTypingIndicator();
-  const [value, setValue]       = useState("");
-  const [sending, setSending]   = useState(false);
-  const textareaRef             = useRef(null);
+  const { sendMessage }       = useChat();
+  const { onType, onStop }    = useTypingIndicator();
+  const [value, setValue]     = useState("");
+  const [sending, setSending] = useState(false);
+  const textareaRef           = useRef(null);
 
   const handleSend = async () => {
     const trimmed = value.trim();
@@ -57,16 +57,24 @@ export default function MessageInput({ channelName = "general" }) {
     onType();
   };
 
+  const canSend = value.trim() && !sending;
+
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.box}>
+    <div className="px-3.5 pb-3.5 pt-2.5 border-t border-slate-200 bg-white flex-shrink-0">
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+
         {/* Toolbar */}
-        <div style={styles.toolbar}>
+        <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-slate-100 flex-wrap">
           {TOOLBAR_TOOLS.map((tool, i) =>
             tool === null ? (
-              <div key={i} style={styles.sep} />
+              <div key={i} className="w-px h-4 bg-slate-200 mx-1" />
             ) : (
-              <button key={i} style={styles.toolBtn} aria-label={tool.label} title={tool.label}>
+              <button
+                key={i}
+                aria-label={tool.label}
+                title={tool.label}
+                className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 text-[13px] border-none bg-transparent cursor-pointer transition-colors"
+              >
                 <i className={`ti ${tool.icon}`} aria-hidden="true" />
               </button>
             )
@@ -76,7 +84,6 @@ export default function MessageInput({ channelName = "general" }) {
         {/* Textarea */}
         <textarea
           ref={textareaRef}
-          style={styles.textarea}
           rows={2}
           placeholder={`Message #${channelName}`}
           value={value}
@@ -85,29 +92,36 @@ export default function MessageInput({ channelName = "general" }) {
           onBlur={onStop}
           aria-label={`Message ${channelName}`}
           disabled={sending}
+          className="w-full px-3 py-2 text-[13px] text-slate-800 placeholder:text-slate-400 outline-none bg-transparent border-none resize-none font-inherit box-border leading-relaxed"
         />
 
         {/* Footer */}
-        <div style={styles.footer}>
-          <div style={styles.footerLeft}>
+        <div className="flex items-center justify-between px-2 pb-2 pt-1">
+          <div className="flex gap-0.5">
             {FOOTER_TOOLS.map((tool) => (
-              <button key={tool.icon} style={styles.toolBtn} aria-label={tool.label} title={tool.label}>
+              <button
+                key={tool.icon}
+                aria-label={tool.label}
+                title={tool.label}
+                className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 text-[13px] border-none bg-transparent cursor-pointer transition-colors"
+              >
                 <i className={`ti ${tool.icon}`} aria-hidden="true" />
               </button>
             ))}
           </div>
+
           <button
-            style={{
-              ...styles.sendBtn,
-              opacity: value.trim() && !sending ? 1 : 0.45,
-              cursor: value.trim() && !sending ? "pointer" : "default",
-            }}
             onClick={handleSend}
-            disabled={!value.trim() || sending}
+            disabled={!canSend}
             aria-label="Send message"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium text-white border-none cursor-pointer transition-all ${
+              canSend
+                ? "bg-blue-600 hover:bg-blue-700 opacity-100"
+                : "bg-blue-400 opacity-50 cursor-not-allowed"
+            }`}
           >
             {sending ? (
-              <span style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />
+              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <i className="ti ti-send" aria-hidden="true" />
             )}
@@ -115,19 +129,6 @@ export default function MessageInput({ channelName = "general" }) {
           </button>
         </div>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
-
-const styles = {
-  wrapper: { padding: "10px 14px 14px", borderTop: "0.5px solid rgba(255,255,255,0.07)", background: "#25253a", flexShrink: 0 },
-  box: { background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" },
-  toolbar: { display: "flex", alignItems: "center", gap: 2, padding: "6px 8px", borderBottom: "0.5px solid rgba(255,255,255,0.06)", flexWrap: "wrap" },
-  toolBtn: { width: 26, height: 26, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", color: "#6060a0", fontSize: 14, cursor: "pointer", border: "none", background: "transparent", transition: "background 0.15s, color 0.15s" },
-  sep: { width: 0.5, height: 16, background: "rgba(255,255,255,0.1)", margin: "0 4px" },
-  textarea: { padding: "8px 12px", fontSize: 13, color: "#c0c0e0", outline: "none", background: "transparent", border: "none", width: "100%", resize: "none", fontFamily: "inherit", boxSizing: "border-box", lineHeight: 1.5 },
-  footer: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 8px 6px" },
-  footerLeft: { display: "flex", gap: 2 },
-  sendBtn: { background: "#5d5fe8", border: "none", borderRadius: 5, padding: "5px 12px", fontSize: 12, color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, fontFamily: "inherit", fontWeight: 500, transition: "background 0.15s" },
-};

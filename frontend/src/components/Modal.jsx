@@ -1,88 +1,41 @@
 import { useEffect } from "react";
-
-export default function Modal({ open, onClose, title, children, width = 480 }) {
-  // Close on Escape
+ 
+export function Modal({ open, onClose, title, children, width = 480 }) {
   useEffect(() => {
     if (!open) return;
     const handler = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
-
+ 
   if (!open) return null;
-
+ 
   return (
     <div
-      style={styles.overlay}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ ...styles.modal, width }}>
+      <div
+        className="bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+        style={{ width }}
+      >
         {/* Header */}
-        <div style={styles.header}>
-          <span style={styles.title}>{title}</span>
-          <button style={styles.closeBtn} onClick={onClose} aria-label="Close">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+          <span className="text-[15px] font-semibold text-slate-800">{title}</span>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="w-7 h-7 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 bg-transparent border-none cursor-pointer transition-colors text-base"
+          >
             <i className="ti ti-x" />
           </button>
         </div>
-
+ 
         {/* Body */}
-        <div style={styles.body}>{children}</div>
+        <div className="p-5 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );
 }
-
-const styles = {
-  overlay: {
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0,0,0,0.6)",
-    backdropFilter: "blur(4px)",
-    zIndex: 200,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-  },
-  modal: {
-    background: "#1e1e30",
-    border: "0.5px solid rgba(255,255,255,0.12)",
-    borderRadius: 12,
-    boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
-    overflow: "hidden",
-    maxHeight: "90vh",
-    display: "flex",
-    flexDirection: "column",
-  },
-  header: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "16px 20px",
-    borderBottom: "0.5px solid rgba(255,255,255,0.08)",
-    flexShrink: 0,
-  },
-  title: {
-    fontSize: 15,
-    fontWeight: 600,
-    color: "#e0e0f0",
-  },
-  closeBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 6,
-    border: "none",
-    background: "transparent",
-    color: "#6060a0",
-    fontSize: 16,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  body: {
-    padding: "20px",
-    overflowY: "auto",
-    flex: 1,
-  },
-};
+ 
+export default Modal;

@@ -1,28 +1,28 @@
 import { useNotifications } from "../context/NotificationContext";
 
 const TYPE_ICON = {
-  mention:          { icon: "ti-at",             color: "#5d5fe8", bg: "rgba(93,95,232,0.15)" },
-  direct_message:   { icon: "ti-message-circle", color: "#3db87a", bg: "rgba(61,184,122,0.15)" },
-  reaction:         { icon: "ti-mood-smile",     color: "#f0a22a", bg: "rgba(240,162,42,0.15)"  },
-  thread_reply:     { icon: "ti-message-2",      color: "#8b5cf6", bg: "rgba(139,92,246,0.15)"  },
-  channel_invite:   { icon: "ti-door-enter",     color: "#06b6d4", bg: "rgba(6,182,212,0.15)"   },
-  workspace_invite: { icon: "ti-building",       color: "#10b981", bg: "rgba(16,185,129,0.15)"  },
-  system:           { icon: "ti-info-circle",    color: "#6b7280", bg: "rgba(107,114,128,0.15)" },
+  mention:          { icon: "ti-at",             color: "text-blue-600",   bg: "bg-blue-100"   },
+  direct_message:   { icon: "ti-message-circle", color: "text-emerald-600",bg: "bg-emerald-100"},
+  reaction:         { icon: "ti-mood-smile",      color: "text-amber-500",  bg: "bg-amber-100"  },
+  thread_reply:     { icon: "ti-message-2",       color: "text-violet-600", bg: "bg-violet-100" },
+  channel_invite:   { icon: "ti-door-enter",      color: "text-cyan-600",   bg: "bg-cyan-100"   },
+  workspace_invite: { icon: "ti-building",        color: "text-teal-600",   bg: "bg-teal-100"   },
+  system:           { icon: "ti-info-circle",     color: "text-slate-500",  bg: "bg-slate-100"  },
 };
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
-  const mins  = Math.floor(diff / 60000);
-  if (mins < 1)  return "just now";
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)  return `${hrs}h ago`;
+  if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
 function NotifRow({ n, onMarkRead, onDelete }) {
-  const meta    = TYPE_ICON[n.type] || TYPE_ICON.system;
-  const actor   = n.actor;
+  const meta = TYPE_ICON[n.type] || TYPE_ICON.system;
+  const actor = n.actor;
   const actorName = actor?.displayName || actor?.username || "Someone";
   const actorInit = actorName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   const channelName = n.channel?.displayName || n.channel?.name || "";
@@ -39,79 +39,56 @@ function NotifRow({ n, onMarkRead, onDelete }) {
 
   return (
     <div
-      style={{
-        display: "flex", gap: 10, padding: "10px 16px",
-        background: n.isRead ? "transparent" : "rgba(93,95,232,0.06)",
-        borderBottom: "0.5px solid rgba(255,255,255,0.05)",
-        transition: "background 0.15s",
-        cursor: "pointer",
-        position: "relative",
-      }}
+      className={`group flex gap-2.5 px-4 py-2.5 border-b border-slate-100 cursor-pointer transition-colors duration-150
+        ${n.isRead ? "bg-white hover:bg-slate-50" : "bg-blue-50 hover:bg-blue-100/70"}`}
       onClick={() => !n.isRead && onMarkRead(n._id)}
-      onMouseEnter={(e) => e.currentTarget.style.background = n.isRead ? "rgba(255,255,255,0.03)" : "rgba(93,95,232,0.1)"}
-      onMouseLeave={(e) => e.currentTarget.style.background = n.isRead ? "transparent" : "rgba(93,95,232,0.06)"}
     >
       {/* Unread dot */}
-      {!n.isRead && (
-        <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#5d5fe8", flexShrink: 0, marginTop: 6 }} />
-      )}
-      {n.isRead && <div style={{ width: 6, flexShrink: 0 }} />}
+      {!n.isRead
+        ? <div className="w-1.5 h-1.5 rounded-full bg-blue-600 flex-shrink-0 mt-1.5" />
+        : <div className="w-1.5 flex-shrink-0" />
+      }
 
-      {/* Type icon or actor avatar */}
-      <div style={{ flexShrink: 0 }}>
+      {/* Avatar / icon */}
+      <div className="flex-shrink-0">
         {actor ? (
-          <div style={{ position: "relative" }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: actor.avatarColor || "#5d5fe8",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 11, fontWeight: 600, color: "#fff", overflow: "hidden",
-            }}>
+          <div className="relative">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-semibold text-white overflow-hidden"
+              style={{ background: actor.avatarColor || "#2563eb" }}
+            >
               {actor.avatar
-                ? <img src={actor.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ? <img src={actor.avatar} alt="" className="w-full h-full object-cover" />
                 : actorInit}
             </div>
-            {/* Type badge */}
-            <div style={{
-              position: "absolute", bottom: -3, right: -3,
-              width: 16, height: 16, borderRadius: "50%",
-              background: meta.bg, border: "1.5px solid #1e1e2e",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <i className={`ti ${meta.icon}`} style={{ fontSize: 9, color: meta.color }} />
+            <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${meta.bg} border-2 border-white flex items-center justify-center`}>
+              <i className={`ti ${meta.icon} text-[9px] ${meta.color}`} />
             </div>
           </div>
         ) : (
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: meta.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <i className={`ti ${meta.icon}`} style={{ fontSize: 16, color: meta.color }} />
+          <div className={`w-8 h-8 rounded-lg ${meta.bg} flex items-center justify-center`}>
+            <i className={`ti ${meta.icon} text-base ${meta.color}`} />
           </div>
         )}
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12, color: n.isRead ? "#8080a8" : "#d0d0f0", lineHeight: 1.4, marginBottom: 3 }}>
+      <div className="flex-1 min-w-0">
+        <p className={`text-xs leading-snug mb-0.5 ${n.isRead ? "text-slate-500" : "text-slate-800"}`}>
           {label}
-        </div>
+        </p>
         {n.preview && (
-          <div style={{
-            fontSize: 11, color: "#5050a0",
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            background: "rgba(255,255,255,0.04)", borderRadius: 4,
-            padding: "2px 6px", marginBottom: 4,
-          }}>
+          <p className="text-[11px] text-slate-400 truncate bg-slate-100 rounded px-1.5 py-0.5 mb-1">
             "{n.preview}"
-          </div>
+          </p>
         )}
-        <div style={{ fontSize: 10, color: "#4040a0" }}>{timeAgo(n.createdAt)}</div>
+        <p className="text-[10px] text-slate-400">{timeAgo(n.createdAt)}</p>
       </div>
 
-      {/* Delete button */}
+      {/* Delete */}
       <button
         onClick={(e) => { e.stopPropagation(); onDelete(n._id); }}
-        style={{ background: "none", border: "none", color: "#4040a0", cursor: "pointer", fontSize: 14, opacity: 0, transition: "opacity 0.15s", padding: "2px 4px", borderRadius: 4, alignSelf: "flex-start" }}
-        onMouseEnter={(e) => e.currentTarget.style.opacity = "1"}
-        onMouseLeave={(e) => e.currentTarget.style.opacity = "0"}
+        className="opacity-0 group-hover:opacity-100 transition-opacity self-start text-slate-400 hover:text-red-500 p-0.5 rounded text-sm bg-transparent border-none cursor-pointer"
         title="Dismiss"
       >
         <i className="ti ti-x" />
@@ -127,56 +104,50 @@ export default function NotificationPanel({ open, onClose }) {
 
   return (
     <>
-      <div style={{ position: "fixed", inset: 0, zIndex: 49 }} onClick={onClose} />
+      <div className="fixed inset-0 z-40" onClick={onClose} />
 
-      <div style={{
-        position: "fixed", top: 0, right: 0, bottom: 0,
-        width: 340, zIndex: 50,
-        background: "#1e1e2e",
-        borderLeft: "0.5px solid rgba(255,255,255,0.08)",
-        display: "flex", flexDirection: "column",
-        boxShadow: "-8px 0 32px rgba(0,0,0,0.4)",
-      }}>
+      <div className="fixed top-0 right-0 bottom-0 w-[340px] z-50 bg-white border-l border-slate-200 flex flex-col shadow-2xl">
         {/* Header */}
-        <div style={{ padding: "16px 16px 12px", borderBottom: "0.5px solid rgba(255,255,255,0.07)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#e0e0f0" }}>
-              Notifications
-              {unreadCount > 0 && (
-                <span style={{ marginLeft: 8, background: "#5d5fe8", color: "#fff", fontSize: 10, padding: "1px 6px", borderRadius: 8, fontWeight: 700 }}>
-                  {unreadCount}
-                </span>
-              )}
-            </div>
+        <div className="px-4 pt-4 pb-3 border-b border-slate-100 flex-shrink-0 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-600 text-slate-800 font-semibold">Notifications</span>
+            {unreadCount > 0 && (
+              <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                {unreadCount}
+              </span>
+            )}
           </div>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <div className="flex items-center gap-1.5">
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                style={{ background: "rgba(255,255,255,0.07)", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "4px 10px", fontSize: 11, color: "#8080a8", cursor: "pointer" }}
+                className="bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-md px-2.5 py-1 text-[11px] text-slate-500 cursor-pointer transition-colors"
               >
                 Mark all read
               </button>
             )}
-            <button onClick={onClose} style={{ background: "none", border: "none", color: "#6060a0", cursor: "pointer", fontSize: 18 }}>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer text-lg leading-none"
+            >
               <i className="ti ti-x" />
             </button>
           </div>
         </div>
 
         {/* List */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div className="flex-1 overflow-y-auto">
           {loading && (
-            <div style={{ textAlign: "center", padding: "40px 0" }}>
-              <span style={{ fontSize: 12, color: "#5050a0" }}>Loading…</span>
+            <div className="text-center py-10">
+              <span className="text-xs text-slate-400">Loading…</span>
             </div>
           )}
 
           {!loading && notifications.length === 0 && (
-            <div style={{ textAlign: "center", padding: "48px 20px" }}>
-              <div style={{ fontSize: 36, marginBottom: 12 }}>🔔</div>
-              <p style={{ fontSize: 13, color: "#5050a0" }}>You're all caught up!</p>
-              <p style={{ fontSize: 11, color: "#40408080", marginTop: 4 }}>No notifications yet</p>
+            <div className="text-center px-5 py-12">
+              <div className="text-4xl mb-3">🔔</div>
+              <p className="text-sm text-slate-400">You're all caught up!</p>
+              <p className="text-[11px] text-slate-300 mt-1">No notifications yet</p>
             </div>
           )}
 

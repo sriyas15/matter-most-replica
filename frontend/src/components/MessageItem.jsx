@@ -16,10 +16,7 @@ function renderText(raw = "") {
   return parts.map((part, i) => {
     if (part.startsWith("`") && part.endsWith("`")) {
       return (
-        <code
-          key={i}
-          className="bg-white/8 px-[5px] py-[1px] rounded-[3px] font-mono text-[12px] text-[#c0c0e0]"
-        >
+        <code key={i} className="bg-blue-50 px-1 py-0.5 rounded text-[12px] font-mono text-blue-700 border border-blue-100">
           {part.slice(1, -1)}
         </code>
       );
@@ -37,7 +34,6 @@ export default function MessageItem({ message, isConsecutive }) {
   const [reactions, setReactions] = useState(message.reactions || []);
 
   const isMine = message.sender?._id === user?._id || message.sender === user?._id;
-
   const sender = message.sender || {};
   const name = sender.displayName || sender.name || sender.username || "Unknown";
   const time = formatTime(message.createdAt || message.timestamp);
@@ -75,13 +71,13 @@ export default function MessageItem({ message, isConsecutive }) {
   if (isConsecutive) {
     return (
       <div
-        className="flex gap-[10px] py-[2px]"
+        className="flex gap-2.5 py-0.5 hover:bg-slate-50 rounded-md px-1 transition-colors"
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
       >
         <div className="w-8 shrink-0 flex items-center justify-center">
           {hovered && (
-            <span className="text-[10px] text-[#8080a8] leading-none whitespace-nowrap">
+            <span className="text-[10px] text-slate-400 leading-none whitespace-nowrap">
               {time}
             </span>
           )}
@@ -97,11 +93,11 @@ export default function MessageItem({ message, isConsecutive }) {
             />
           ) : (
             <>
-              <div className="flex items-baseline gap-2 mb-[3px] h-[18px]">
+              <div className="flex items-center gap-2 mb-0.5 h-[18px]">
                 {hovered && (
                   <>
                     {message.isEdited && (
-                      <span className="text-[10px] text-[#8080a8]">(edited)</span>
+                      <span className="text-[10px] text-slate-400">(edited)</span>
                     )}
                     <MessageActions
                       isMine={isMine}
@@ -112,12 +108,11 @@ export default function MessageItem({ message, isConsecutive }) {
                   </>
                 )}
               </div>
-              <p className="text-[13px] text-[#a0a0c0] leading-relaxed break-words">
+              <p className="text-[13px] text-slate-700 leading-relaxed break-words">
                 {renderText(message.text)}
               </p>
             </>
           )}
-
           <ReactionRow reactions={reactionMap} onReact={handleReact} userId={user?._id} />
         </div>
       </div>
@@ -126,18 +121,18 @@ export default function MessageItem({ message, isConsecutive }) {
 
   return (
     <div
-      className="flex gap-[10px] py-[2px] relative"
+      className="flex gap-2.5 py-0.5 hover:bg-slate-50 rounded-md px-1 transition-colors relative"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <Avatar user={sender} size={32} showStatus />
+      <Avatar user={user} size={32} showStatus />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 mb-[3px]">
-          <span className="text-[13px] font-medium text-[#d8d8f0]">{name}</span>
-          <span className="text-[11px] text-[#8080a8]">{time}</span>
+        <div className="flex items-baseline gap-2 mb-0.5">
+          <span className="text-[13px] font-semibold text-slate-800">{name}</span>
+          <span className="text-[11px] text-slate-400">{time}</span>
           {message.isEdited && (
-            <span className="text-[10px] text-[#8080a8]">(edited)</span>
+            <span className="text-[10px] text-slate-400">(edited)</span>
           )}
           {hovered && !editing && (
             <MessageActions
@@ -157,7 +152,7 @@ export default function MessageItem({ message, isConsecutive }) {
             onCancel={() => { setEditing(false); setEditText(message.text); }}
           />
         ) : (
-          <p className="text-[13px] text-[#a0a0c0] leading-relaxed break-words">
+          <p className="text-[13px] text-slate-700 leading-relaxed break-words">
             {renderText(message.text)}
           </p>
         )}
@@ -179,14 +174,20 @@ function EditBox({ value, onChange, onSave, onCancel }) {
           if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSave(); }
           if (e.key === "Escape") onCancel();
         }}
-        className="w-full bg-white/7 border border-[rgba(93,95,232,0.5)] rounded-[6px] px-[10px] py-[6px] text-[13px] text-[#d0d0f0] outline-none resize-none font-inherit box-border"
+        className="w-full bg-white border border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-md px-2.5 py-1.5 text-[13px] text-slate-800 outline-none resize-none font-inherit box-border transition-all"
         rows={2}
       />
-      <div className="flex gap-[6px] mt-1">
-        <button onClick={onSave} className="bg-[#5d5fe8] text-white border-none rounded px-[10px] py-[3px] text-[11px] cursor-pointer font-inherit">
+      <div className="flex gap-1.5 mt-1">
+        <button
+          onClick={onSave}
+          className="bg-blue-600 hover:bg-blue-700 text-white border-none rounded px-2.5 py-1 text-[11px] cursor-pointer font-inherit transition-colors"
+        >
           Save
         </button>
-        <button onClick={onCancel} className="bg-white/8 text-[#a0a0c0] border-none rounded px-[10px] py-[3px] text-[11px] cursor-pointer font-inherit">
+        <button
+          onClick={onCancel}
+          className="bg-slate-100 hover:bg-slate-200 text-slate-500 border-none rounded px-2.5 py-1 text-[11px] cursor-pointer font-inherit transition-colors"
+        >
           Cancel
         </button>
       </div>
@@ -205,14 +206,14 @@ function ReactionRow({ reactions, onReact, userId }) {
           <button
             key={r.emoji}
             onClick={() => onReact(r.emoji)}
-            className={`flex items-center gap-[3px] rounded-[10px] px-[7px] py-[2px] text-[13px] cursor-pointer text-[#c0c0d8] border transition-colors ${
+            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[13px] cursor-pointer border transition-colors ${
               mine
-                ? "bg-[rgba(93,95,232,0.25)] border-[rgba(93,95,232,0.5)]"
-                : "bg-white/7 border-white/10"
+                ? "bg-blue-50 border-blue-300 text-blue-700"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50"
             }`}
           >
             {r.emoji}
-            <span className="text-[11px]">{r.count}</span>
+            <span className="text-[11px] font-medium">{r.count}</span>
           </button>
         );
       })}
@@ -222,10 +223,10 @@ function ReactionRow({ reactions, onReact, userId }) {
 
 function MessageActions({ isMine, onEdit, onDelete, onReact }) {
   const [emojiOpen, setEmojiOpen] = useState(false);
-  const [dotsOpen, setDotsOpen]   = useState(false);
+  const [dotsOpen, setDotsOpen] = useState(false);
 
   return (
-    <div className="flex gap-[2px] bg-[#2a2a3e] border border-white/10 rounded-[6px] px-[4px] py-[2px] shrink-0 self-center">
+    <div className="flex gap-0.5 bg-white border border-slate-200 shadow-sm rounded-md px-1 py-0.5 shrink-0 self-center">
 
       {/* React */}
       <div className="relative">
@@ -235,12 +236,12 @@ function MessageActions({ isMine, onEdit, onDelete, onReact }) {
           onClick={() => { setEmojiOpen((p) => !p); setDotsOpen(false); }}
         />
         {emojiOpen && (
-          <div className="absolute bottom-[110%] left-0 bg-[#2a2a3e] border border-white/12 rounded-[8px] p-[6px_8px] flex gap-[2px] z-50 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+          <div className="absolute bottom-[110%] left-0 bg-white border border-slate-200 shadow-lg rounded-lg p-1.5 flex gap-0.5 z-50">
             {QUICK_EMOJIS.map((e) => (
               <button
                 key={e}
                 onClick={() => { onReact(e); setEmojiOpen(false); }}
-                className="bg-none border-none text-[18px] cursor-pointer p-[2px_3px] rounded"
+                className="bg-transparent border-none text-lg cursor-pointer px-1 py-0.5 rounded hover:bg-slate-100 transition-colors"
               >
                 {e}
               </button>
@@ -257,34 +258,30 @@ function MessageActions({ isMine, onEdit, onDelete, onReact }) {
           onClick={() => { setDotsOpen((p) => !p); setEmojiOpen(false); }}
         />
         {dotsOpen && (
-          <div
-            className="absolute bottom-[110%] right-0 bg-[#2a2a3e] border border-white/12 rounded-[8px] overflow-hidden z-50 shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
-            style={{ minWidth: 130 }}
-          >
+          <div className="absolute bottom-[110%] right-0 bg-white border border-slate-200 shadow-lg rounded-lg overflow-hidden z-50 min-w-[130px]">
             {isMine ? (
               <>
                 <button
                   onClick={() => { onEdit(); setDotsOpen(false); }}
-                  className="w-full flex items-center gap-[8px] px-[12px] py-[8px] text-[12px] text-[#c0c0d8] bg-transparent border-none cursor-pointer hover:bg-white/6 transition-colors text-left font-inherit"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-slate-600 bg-transparent border-none cursor-pointer hover:bg-slate-50 transition-colors text-left font-inherit"
                 >
-                  <i className="ti ti-pencil text-[13px] text-[#7070a0]" />
+                  <i className="ti ti-pencil text-[13px] text-slate-400" />
                   Edit
                 </button>
                 <button
                   onClick={() => { onDelete(); setDotsOpen(false); }}
-                  className="w-full flex items-center gap-[8px] px-[12px] py-[8px] text-[12px] text-[#f87171] bg-transparent border-none cursor-pointer hover:bg-white/6 transition-colors text-left font-inherit"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors text-left font-inherit"
                 >
-                  <i className="ti ti-trash text-[13px] text-[#f87171]" />
+                  <i className="ti ti-trash text-[13px] text-red-400" />
                   Delete
                 </button>
               </>
             ) : (
-              <div className="px-[12px] py-[8px] text-[11px] text-[#5050a0]">No actions</div>
+              <div className="px-3 py-2 text-[11px] text-slate-400">No actions</div>
             )}
           </div>
         )}
       </div>
-
     </div>
   );
 }
@@ -294,7 +291,7 @@ function ActionBtn({ icon, label, onClick, className = "" }) {
     <button
       title={label}
       onClick={onClick}
-      className={`w-[26px] h-[26px] rounded flex items-center justify-center text-[#7070a0] text-[14px] cursor-pointer border-none bg-white/5 hover:bg-white/10 transition-colors ${className}`}
+      className={`w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 text-[14px] cursor-pointer border-none bg-transparent hover:bg-blue-50 transition-colors ${className}`}
     >
       <i className={`ti ${icon}`} />
     </button>

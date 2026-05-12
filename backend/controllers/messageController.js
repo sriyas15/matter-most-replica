@@ -205,6 +205,15 @@ export const editMessage = async (req, res) => {
     await message.save();
 
     await message.populate("sender", "username displayName avatar avatarColor");
+
+    const io = getIO();
+    io.to(`channel:${message.channel}`).emit("message:updated", {
+      messageId,
+      text: message.text,
+      isEdited: true,
+      editedAt: message.editedAt,
+    });
+
     res.json({ success: true, data: message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -228,6 +237,9 @@ export const deleteMessage = async (req, res) => {
       return res.status(403).json({ success: false, message: "Not authorized" });
 
     await message.softDelete();
+
+    const io = getIO();
+    io.to(`channel:${message.channel}`).emit("message:deleted", { messageId });
 
     res.json({ success: true, message: "Message deleted" });
   } catch (err) {

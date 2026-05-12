@@ -64,7 +64,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs mb-1.5 font-medium" style={{ color: "#8080a8" }}>Email</label>
+            <label className="block text-xs mb-1.5 font-medium" style={{ color: "#8080a8" }}>Email or Username</label>
             <input type="email" name="email" placeholder="you@company.com" value={form.email}
               onChange={handleChange} required
               style={{ background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.12)", color: "#e0e0f0" }}

@@ -43,7 +43,7 @@ const userSchema = new mongoose.Schema(
     // Hex colour used as avatar fallback (like Mattermost initials)
     avatarColor: {
       type: String,
-      default: "#5d5fe8",
+      default: "#2563EB",
     },
 
     bio: {

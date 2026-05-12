@@ -4,8 +4,8 @@ import api from "../lib/api";
 
 export default function CreateChannelModal({ onClose }) {
   const { activeWorkspace, addChannel } = useWorkspace();
-  const [form, setForm]   = useState({ name: "", description: "", type: "public" });
-  const [error, setError] = useState("");
+  const [form, setForm]     = useState({ name: "", description: "", type: "public" });
+  const [error, setError]   = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -13,15 +13,12 @@ export default function CreateChannelModal({ onClose }) {
     setError("");
     setLoading(true);
     try {
-      const { data } = await api.post(
-        `/workspaces/${activeWorkspace._id}/channels`,
-        {
-          name:        form.name.toLowerCase().replace(/\s+/g, "-"),
-          displayName: form.name,
-          description: form.description,
-          type:        form.type,
-        }
-      );
+      const { data } = await api.post(`/workspaces/${activeWorkspace._id}/channels`, {
+        name:        form.name.toLowerCase().replace(/\s+/g, "-"),
+        displayName: form.name,
+        description: form.description,
+        type:        form.type,
+      });
       addChannel(data.data);
       onClose();
     } catch (err) {
@@ -32,33 +29,40 @@ export default function CreateChannelModal({ onClose }) {
   };
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
-      <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div style={styles.header}>
-          <h3 style={styles.title}>Create a Channel</h3>
-          <button style={styles.closeBtn} onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[200]" onClick={onClose}>
+      <div className="bg-white border border-slate-200 rounded-xl w-full max-w-[440px] p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-[16px] font-semibold text-slate-800 m-0">Create a Channel</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 text-lg p-1 rounded-md border-none bg-transparent cursor-pointer transition-colors flex items-center">
             <i className="ti ti-x" />
           </button>
         </div>
 
-        {error && <div style={styles.error}>{error}</div>}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-[12px] mb-4">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} style={styles.form}>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Channel type */}
-          <div style={styles.field}>
-            <label style={styles.label}>Channel Type</label>
-            <div style={styles.typeRow}>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-slate-500">Channel Type</label>
+            <div className="flex gap-2">
               {["public", "private"].map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setForm((p) => ({ ...p, type: t }))}
-                  style={{
-                    ...styles.typeBtn,
-                    ...(form.type === t ? styles.typeBtnActive : {}),
-                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-[13px] border cursor-pointer transition-colors font-inherit ${
+                    form.type === t
+                      ? "bg-blue-50 border-blue-400 text-blue-700 font-medium"
+                      : "bg-slate-50 border-slate-200 text-slate-500 hover:border-blue-200 hover:text-blue-600"
+                  }`}
                 >
-                  <i className={`ti ${t === "public" ? "ti-hash" : "ti-lock"}`} />
+                  <i className={`ti ${t === "public" ? "ti-hash" : "ti-lock"} text-[13px]`} />
                   {t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>
               ))}
@@ -66,10 +70,10 @@ export default function CreateChannelModal({ onClose }) {
           </div>
 
           {/* Name */}
-          <div style={styles.field}>
-            <label style={styles.label}>Channel Name</label>
-            <div style={styles.inputWrap}>
-              <span style={styles.inputPrefix}>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-slate-500">Channel Name</label>
+            <div className="relative flex items-center">
+              <span className="absolute left-2.5 text-slate-400 text-[14px] pointer-events-none">
                 <i className={`ti ${form.type === "private" ? "ti-lock" : "ti-hash"}`} />
               </span>
               <input
@@ -78,29 +82,38 @@ export default function CreateChannelModal({ onClose }) {
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 placeholder="e.g. frontend-dev"
-                style={styles.input}
+                className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-lg pl-8 pr-3 py-2 text-[13px] text-slate-800 outline-none placeholder:text-slate-400 transition-all box-border"
               />
             </div>
           </div>
 
           {/* Description */}
-          <div style={styles.field}>
-            <label style={styles.label}>
-              Description <span style={{ color: "#5050a0" }}>(optional)</span>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-slate-500">
+              Description <span className="text-slate-400">(optional)</span>
             </label>
             <input
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
               placeholder="What's this channel about?"
-              style={styles.input}
+              className="w-full bg-white border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-lg px-3 py-2 text-[13px] text-slate-800 outline-none placeholder:text-slate-400 transition-all"
             />
           </div>
 
-          <div style={styles.footer}>
-            <button type="button" style={styles.cancelBtn} onClick={onClose}>
+          {/* Footer */}
+          <div className="flex justify-end gap-2 mt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-[13px] text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg border-none cursor-pointer transition-colors font-inherit"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={loading || !form.name.trim()} style={styles.submitBtn}>
+            <button
+              type="submit"
+              disabled={loading || !form.name.trim()}
+              className="px-4 py-2 text-[13px] font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg border-none cursor-pointer transition-colors font-inherit"
+            >
               {loading ? "Creating…" : "Create Channel"}
             </button>
           </div>
@@ -109,24 +122,3 @@ export default function CreateChannelModal({ onClose }) {
     </div>
   );
 }
-
-const styles = {
-  overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, backdropFilter: "blur(4px)" },
-  modal:   { background: "#1e1e2e", border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: 12, width: "100%", maxWidth: 440, padding: "24px", boxShadow: "0 24px 64px rgba(0,0,0,0.5)" },
-  header:  { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
-  title:   { fontSize: 16, fontWeight: 600, color: "#e8e8f0", margin: 0 },
-  closeBtn:{ background: "transparent", border: "none", color: "#6060a0", fontSize: 18, cursor: "pointer", padding: 4, borderRadius: 6, display: "flex", alignItems: "center" },
-  error:   { background: "rgba(239,68,68,0.15)", border: "0.5px solid rgba(239,68,68,0.3)", color: "#f87171", borderRadius: 6, padding: "8px 12px", fontSize: 12, marginBottom: 16 },
-  form:    { display: "flex", flexDirection: "column", gap: 16 },
-  field:   { display: "flex", flexDirection: "column", gap: 6 },
-  label:   { fontSize: 12, fontWeight: 500, color: "#8080a8" },
-  typeRow: { display: "flex", gap: 8 },
-  typeBtn: { flex: 1, padding: "8px 12px", borderRadius: 8, border: "0.5px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "#8080a8", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 },
-  typeBtnActive: { background: "rgba(93,95,232,0.2)", border: "0.5px solid rgba(93,95,232,0.5)", color: "#a0a0f8" },
-  inputWrap: { position: "relative", display: "flex", alignItems: "center" },
-  inputPrefix: { position: "absolute", left: 10, color: "#6060a0", fontSize: 14, pointerEvents: "none" },
-  input: { width: "100%", background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px 9px 32px", fontSize: 13, color: "#e0e0f0", outline: "none", boxSizing: "border-box" },
-  footer: { display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 },
-  cancelBtn: { background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 7, padding: "8px 16px", fontSize: 13, color: "#9090b0", cursor: "pointer" },
-  submitBtn: { background: "#5d5fe8", border: "none", borderRadius: 7, padding: "8px 18px", fontSize: 13, color: "#fff", cursor: "pointer", fontWeight: 500 },
-};

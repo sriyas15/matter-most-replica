@@ -5,19 +5,19 @@ import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
 
 const STATUS_OPTIONS = [
-  { value: "online", label: "🟢 Online",        color: "#3db87a" },
-  { value: "away",   label: "🟡 Away",           color: "#f0a22a" },
-  { value: "dnd",    label: "🔴 Do Not Disturb", color: "#e53e3e" },
-  { value: "offline",label: "⚫ Invisible",      color: "#6060a0" },
+  { value: "online",  label: "🟢 Online",          dot: "bg-emerald-500" },
+  { value: "away",    label: "🟡 Away",             dot: "bg-amber-400"   },
+  { value: "dnd",     label: "🔴 Do Not Disturb",   dot: "bg-red-500"     },
+  { value: "offline", label: "⚫ Invisible",         dot: "bg-slate-400"   },
 ];
 
 export default function UserSettingsModal({ open, onClose }) {
   const { user, updateUser } = useAuth();
   const [tab, setTab]         = useState("profile");
   const [profile, setProfile] = useState({
-    displayName:  user?.displayName  || "",
-    bio:          user?.bio          || "",
-    phone:        user?.phone        || "",
+    displayName: user?.displayName || "",
+    bio:         user?.bio         || "",
+    phone:       user?.phone       || "",
   });
   const [status, setStatus]   = useState(user?.status || "online");
   const [customStatus, setCS] = useState({
@@ -81,19 +81,16 @@ export default function UserSettingsModal({ open, onClose }) {
   return (
     <Modal open={open} onClose={onClose} title="Settings" width={520}>
       {/* Tab bar */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 20, borderBottom: "0.5px solid rgba(255,255,255,0.08)", paddingBottom: 12 }}>
+      <div className="flex gap-1 mb-5 border-b border-slate-100 pb-3">
         {tabs.map((t) => (
           <button
             key={t}
             onClick={() => { setTab(t); setError(""); setSuccess(""); }}
-            style={{
-              background: tab === t ? "rgba(93,95,232,0.2)" : "transparent",
-              border: tab === t ? "0.5px solid rgba(93,95,232,0.4)" : "0.5px solid transparent",
-              borderRadius: 6, padding: "5px 14px",
-              fontSize: 12, fontWeight: 500,
-              color: tab === t ? "#a0a0f8" : "#6060a0",
-              cursor: "pointer", textTransform: "capitalize",
-            }}
+            className={`px-3.5 py-1.5 rounded-md text-xs font-medium capitalize cursor-pointer border transition-colors
+              ${tab === t
+                ? "bg-blue-50 border-blue-200 text-blue-600"
+                : "bg-transparent border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50"
+              }`}
           >
             {t}
           </button>
@@ -101,8 +98,9 @@ export default function UserSettingsModal({ open, onClose }) {
       </div>
 
       <ErrorBanner message={error} />
+
       {success && (
-        <div style={{ background: "rgba(61,184,122,0.12)", border: "0.5px solid rgba(61,184,122,0.3)", borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "#6ee7b7", marginBottom: 16 }}>
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 text-xs text-emerald-700 mb-4">
           ✓ {success}
         </div>
       )}
@@ -110,22 +108,18 @@ export default function UserSettingsModal({ open, onClose }) {
       {/* ── Profile tab ── */}
       {tab === "profile" && (
         <>
-          {/* Avatar preview */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: 12,
-              background: user?.avatarColor || "#5d5fe8",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 20, fontWeight: 600, color: "#fff", overflow: "hidden",
-              flexShrink: 0,
-            }}>
+          <div className="flex items-center gap-3.5 mb-5">
+            <div
+              className="w-14 h-14 rounded-xl flex items-center justify-center text-xl font-semibold text-white overflow-hidden flex-shrink-0"
+              style={{ background: user?.avatarColor || "#2563eb" }}
+            >
               {user?.avatar
-                ? <img src={user.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ? <img src={user.avatar} alt="" className="w-full h-full object-cover" />
                 : initials}
             </div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 500, color: "#d8d8f0" }}>{user?.displayName || user?.username}</div>
-              <div style={{ fontSize: 12, color: "#6060a0" }}>@{user?.username}</div>
+              <p className="text-sm font-medium text-slate-800">{user?.displayName || user?.username}</p>
+              <p className="text-xs text-slate-400">@{user?.username}</p>
             </div>
           </div>
 
@@ -149,36 +143,43 @@ export default function UserSettingsModal({ open, onClose }) {
       {tab === "status" && (
         <>
           <Field label="Availability">
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="flex flex-col gap-2">
               {STATUS_OPTIONS.map((opt) => (
                 <div
                   key={opt.value}
                   onClick={() => setStatus(opt.value)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 12px", borderRadius: 8, cursor: "pointer",
-                    background: status === opt.value ? "rgba(93,95,232,0.15)" : "rgba(255,255,255,0.03)",
-                    border: status === opt.value ? "0.5px solid rgba(93,95,232,0.4)" : "0.5px solid rgba(255,255,255,0.06)",
-                    transition: "all 0.15s",
-                  }}
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer border transition-colors
+                    ${status === opt.value
+                      ? "bg-blue-50 border-blue-200"
+                      : "bg-slate-50 border-slate-100 hover:bg-slate-100"
+                    }`}
                 >
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: opt.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: status === opt.value ? "#c8c8f0" : "#8080a8" }}>{opt.label}</span>
-                  {status === opt.value && <i className="ti ti-check" style={{ marginLeft: "auto", color: "#5d5fe8" }} />}
+                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${opt.dot}`} />
+                  <span className={`text-sm ${status === opt.value ? "text-slate-800 font-medium" : "text-slate-500"}`}>
+                    {opt.label}
+                  </span>
+                  {status === opt.value && (
+                    <i className="ti ti-check ml-auto text-blue-600" />
+                  )}
                 </div>
               ))}
             </div>
           </Field>
 
           <Field label="Custom Status">
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex gap-2">
               <input
                 value={customStatus.emoji}
                 onChange={(e) => setCS((p) => ({ ...p, emoji: e.target.value }))}
                 placeholder="😊"
-                style={{ width: 56, background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "9px 12px", fontSize: 18, color: "#e0e0f0", outline: "none", textAlign: "center", boxSizing: "border-box" }}
+                className="w-14 bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-lg text-center outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition box-border"
               />
-              <Input value={customStatus.text} onChange={(e) => setCS((p) => ({ ...p, text: e.target.value }))} placeholder="What's your status?" maxLength={100} />
+              <Input
+                value={customStatus.text}
+                onChange={(e) => setCS((p) => ({ ...p, text: e.target.value }))}
+                placeholder="What's your status?"
+                maxLength={100}
+              />
             </div>
           </Field>
 

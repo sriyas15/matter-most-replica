@@ -113,7 +113,7 @@ export function Button({ children, onClick, disabled, variant = "primary", type 
   };
 
   const variants = {
-    primary:   { background: "#5d5fe8", color: "#fff" },
+    primary:   { background: "#2563EB", color: "#fff" },
     secondary: { background: "rgba(255,255,255,0.08)", color: "#c0c0d8" },
     danger:    { background: "rgba(239,68,68,0.15)", color: "#f87171", border: "0.5px solid rgba(239,68,68,0.3)" },
   };

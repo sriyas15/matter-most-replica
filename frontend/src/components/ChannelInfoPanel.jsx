@@ -2,6 +2,13 @@ import { useState, useEffect } from "react";
 import { useWorkspace } from "../context/WorkspaceContext";
 import api from "../lib/api";
 
+const STATUS_COLOR = {
+  online:  "bg-emerald-500",
+  away:    "bg-amber-400",
+  dnd:     "bg-red-500",
+  offline: "bg-slate-300",
+};
+
 export default function ChannelInfoPanel({ onClose }) {
   const { activeWorkspace, activeChannel } = useWorkspace();
   const [tab, setTab]         = useState("members"); // members | pins
@@ -22,61 +29,75 @@ export default function ChannelInfoPanel({ onClose }) {
       .finally(() => setLoading(false));
   }, [activeChannel?._id, activeWorkspace?._id]);
 
-  const statusColors = { online: "#3db87a", away: "#f0a22a", dnd: "#e53e3e", offline: "#6060a0" };
-
   return (
-    <div style={styles.panel}>
+    <div className="w-[260px] bg-white border-l border-slate-200 flex flex-col h-full flex-shrink-0">
       {/* Header */}
-      <div style={styles.header}>
-        <span style={styles.title}>
+      <div className="px-3.5 pt-3.5 pb-2.5 flex items-center justify-between border-b border-slate-100">
+        <span className="text-sm font-medium text-slate-800 truncate">
           # {activeChannel?.displayName || activeChannel?.name}
         </span>
-        <button style={styles.closeBtn} onClick={onClose}>
+        <button
+          className="text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer text-lg leading-none flex items-center"
+          onClick={onClose}
+        >
           <i className="ti ti-x" />
         </button>
       </div>
 
       {/* Description */}
       {activeChannel?.description && (
-        <p style={styles.desc}>{activeChannel.description}</p>
+        <p className="px-3.5 py-2 text-xs text-slate-500 border-b border-slate-100">
+          {activeChannel.description}
+        </p>
       )}
 
       {/* Tabs */}
-      <div style={styles.tabs}>
+      <div className="flex border-b border-slate-100">
         {["members", "pins"].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            style={{ ...styles.tab, ...(tab === t ? styles.tabActive : {}) }}
+            className={`flex-1 py-2.5 text-xs cursor-pointer bg-transparent border-none transition-colors
+              ${tab === t
+                ? "text-blue-600 border-b-2 border-blue-600 font-medium"
+                : "text-slate-400 hover:text-slate-600 border-b-2 border-transparent"
+              }`}
           >
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
 
-      {/* Content */}
-      <div style={styles.body}>
-        {loading && <p style={styles.hint}>Loading…</p>}
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto py-2">
+        {loading && (
+          <p className="text-xs text-slate-400 px-3.5 py-3">Loading…</p>
+        )}
 
         {!loading && tab === "members" && (
           <>
-            <p style={styles.count}>{members.length} member{members.length !== 1 ? "s" : ""}</p>
+            <p className="text-[11px] text-slate-400 uppercase tracking-wider px-3.5 pb-2 pt-1">
+              {members.length} member{members.length !== 1 ? "s" : ""}
+            </p>
             {members.map((m) => {
               const u = m.user || m;
               const name = u.displayName || u.username || "Unknown";
               const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
               return (
-                <div key={u._id} style={styles.memberRow}>
-                  <div style={{ ...styles.avatar, background: u.avatarColor || "#5d5fe8" }}>
+                <div key={u._id} className="flex items-center gap-2.5 px-3.5 py-1.5 hover:bg-slate-50 transition-colors">
+                  <div
+                    className="relative w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center text-[11px] font-medium text-white overflow-hidden"
+                    style={{ background: u.avatarColor || "#2563eb" }}
+                  >
                     {u.avatar
-                      ? <img src={u.avatar} alt="" style={{ width: "100%", height: "100%", borderRadius: 6, objectFit: "cover" }} />
+                      ? <img src={u.avatar} alt="" className="w-full h-full rounded-lg object-cover" />
                       : initials}
-                    <div style={{ ...styles.statusDot, background: statusColors[u.status || "offline"] }} />
+                    <div className={`absolute -bottom-px -right-px w-2 h-2 rounded-full border-2 border-white ${STATUS_COLOR[u.status || "offline"]}`} />
                   </div>
                   <div>
-                    <div style={styles.memberName}>{name}</div>
+                    <p className="text-[13px] text-slate-700">{name}</p>
                     {m.role === "admin" && (
-                      <div style={styles.roleBadge}>admin</div>
+                      <p className="text-[10px] text-blue-500 font-medium">admin</p>
                     )}
                   </div>
                 </div>
@@ -87,41 +108,24 @@ export default function ChannelInfoPanel({ onClose }) {
 
         {!loading && tab === "pins" && (
           <>
-            {pinned.length === 0
-              ? <p style={styles.hint}>No pinned messages</p>
-              : pinned.map((msg) => (
-                  <div key={msg._id} style={styles.pinCard}>
-                    <div style={styles.pinMeta}>
-                      {msg.sender?.displayName || "Someone"} · {new Date(msg.createdAt).toLocaleDateString()}
-                    </div>
-                    <div style={styles.pinText}>{msg.text}</div>
-                  </div>
-                ))}
+            {pinned.length === 0 ? (
+              <p className="text-xs text-slate-400 px-3.5 py-3">No pinned messages</p>
+            ) : (
+              pinned.map((msg) => (
+                <div
+                  key={msg._id}
+                  className="mx-2.5 my-1.5 bg-slate-50 rounded-lg p-2.5 border border-slate-200"
+                >
+                  <p className="text-[11px] text-slate-400 mb-1">
+                    {msg.sender?.displayName || "Someone"} · {new Date(msg.createdAt).toLocaleDateString()}
+                  </p>
+                  <p className="text-xs text-slate-600 leading-relaxed">{msg.text}</p>
+                </div>
+              ))
+            )}
           </>
         )}
       </div>
     </div>
   );
 }
-
-const styles = {
-  panel:     { width: 260, background: "#1e1e2e", borderLeft: "0.5px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "column", height: "100%", flexShrink: 0 },
-  header:    { padding: "14px 14px 10px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "0.5px solid rgba(255,255,255,0.07)" },
-  title:     { fontSize: 14, fontWeight: 500, color: "#d8d8f0" },
-  closeBtn:  { background: "transparent", border: "none", color: "#6060a0", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center" },
-  desc:      { padding: "8px 14px", fontSize: 12, color: "#7070a0", borderBottom: "0.5px solid rgba(255,255,255,0.06)" },
-  tabs:      { display: "flex", borderBottom: "0.5px solid rgba(255,255,255,0.07)" },
-  tab:       { flex: 1, padding: "10px", fontSize: 12, color: "#7070a0", background: "transparent", border: "none", cursor: "pointer", borderBottom: "2px solid transparent" },
-  tabActive: { color: "#a0a0f8", borderBottom: "2px solid #5d5fe8" },
-  body:      { flex: 1, overflowY: "auto", padding: "8px 0" },
-  count:     { fontSize: 11, color: "#5050a0", padding: "4px 14px 8px", textTransform: "uppercase", letterSpacing: "0.05em" },
-  memberRow: { display: "flex", alignItems: "center", gap: 10, padding: "6px 14px" },
-  avatar:    { width: 28, height: 28, borderRadius: 6, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 500, color: "#fff", position: "relative", overflow: "hidden" },
-  statusDot: { width: 7, height: 7, borderRadius: "50%", position: "absolute", bottom: -1, right: -1, border: "1.5px solid #1e1e2e" },
-  memberName:{ fontSize: 13, color: "#c0c0d8" },
-  roleBadge: { fontSize: 10, color: "#7070a8", marginTop: 1 },
-  hint:      { fontSize: 12, color: "#5050a0", padding: "12px 14px" },
-  pinCard:   { margin: "6px 10px", background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "8px 10px", border: "0.5px solid rgba(255,255,255,0.07)" },
-  pinMeta:   { fontSize: 11, color: "#6060a0", marginBottom: 4 },
-  pinText:   { fontSize: 12, color: "#a0a0c0", lineHeight: 1.5 },
-};
