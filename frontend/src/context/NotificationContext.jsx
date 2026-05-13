@@ -112,6 +112,8 @@ export function NotificationProvider({ children }) {
                 setMentions((prev) => [notification, ...prev]);
             }
         };
+            socket.onAny((event, ...args) => console.log("[socket event]", event, args));
+
 
         const onMention = ({ message, channelId }) => {
             const synthetic = {
@@ -192,7 +194,6 @@ export function NotificationProvider({ children }) {
     }, [activeWorkspace?._id]);
 
     const unreadMentions = mentions.filter((m) => !m.isRead).length;
-
     return (
         <NotificationContext.Provider value={{
             notifications, unreadCount, mentions, unreadMentions,

@@ -169,8 +169,8 @@ export const createNotification = async ({
     await notification.populate("channel", "name displayName type");
 
     // 🔥 Emit real-time notification
+    console.log(`[Notif] Emitting to user:${recipientId}`, notification.type);
     const io = getIO();
-
     io.to(`user:${recipientId}`).emit("notification:new", notification);
 
     return notification;

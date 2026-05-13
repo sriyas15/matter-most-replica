@@ -4,13 +4,13 @@ import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
 
 export default function SignupPage() {
-  const { register } = useAuth();
-  const navigate = useNavigate();
+  const { register }   = useAuth();
+  const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
-  const inviteToken = searchParams.get("invite") || sessionStorage.getItem("pendingInviteToken");
+  const inviteToken    = searchParams.get("invite") || sessionStorage.getItem("pendingInviteToken");
 
-  const [form, setForm] = useState({ username: "", email: "", password: "", displayName: "" });
-  const [error, setError] = useState("");
+  const [form, setForm]       = useState({ username: "", email: "", password: "", displayName: "" });
+  const [error, setError]     = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -22,7 +22,7 @@ export default function SignupPage() {
     try {
       await register(form);
       if (inviteToken) {
-        try { await api.post(`/workspaces/join/${inviteToken}`); } catch { }
+        try { await api.post(`/workspaces/join/${inviteToken}`); } catch {}
         sessionStorage.removeItem("pendingInviteToken");
       }
       navigate("/");
@@ -33,66 +33,77 @@ export default function SignupPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center"
-      style={{ background: "linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%)" }}>
-      <div style={{ background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.12)", backdropFilter: "blur(20px)" }}
-        className="rounded-2xl p-10 w-full max-w-md shadow-2xl">
+  const fields = [
+    { name: "displayName", label: "Full Name",  type: "text",     placeholder: "Jane Doe"        },
+    { name: "username",    label: "Username",   type: "text",     placeholder: "janedoe"         },
+    { name: "email",       label: "Email",      type: "email",    placeholder: "jane@company.com"},
+    { name: "password",    label: "Password",   type: "password", placeholder: "Min 8 characters"},
+  ];
 
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-blue-50 to-slate-100">
+      <div className="bg-white border border-slate-200 rounded-2xl p-10 w-full max-w-md shadow-xl">
+
+        {/* Logo */}
         <div className="flex justify-center mb-6">
-          <div style={{ background: "linear-gradient(135deg,#5d5fe8,#8b5cf6)" }}
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl">M</div>
+          <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-xl select-none">
+            M
+          </div>
         </div>
 
-        <h2 className="text-2xl font-semibold text-center mb-1" style={{ color: "#e8e8f8" }}>Create your account</h2>
-        <p className="text-center mb-6 text-sm" style={{ color: "#7070a0" }}>
+        <h2 className="text-2xl font-semibold text-center text-slate-800 mb-1">Create your account</h2>
+        <p className="text-center text-sm text-slate-400 mb-6">
           {inviteToken ? "Create an account to join the workspace" : "Join and start chatting"}
         </p>
 
         {inviteToken && (
-          <div style={{ background: "rgba(93,95,232,0.12)", border: "0.5px solid rgba(93,95,232,0.3)", borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "#a0a0f0", marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
-            <i className="ti ti-link" /> You'll be added to the workspace automatically after signing up
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 text-xs text-blue-700 mb-4">
+            <i className="ti ti-link" />
+            You'll be added to the workspace automatically after signing up
           </div>
         )}
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg text-sm"
-            style={{ background: "rgba(239,68,68,0.15)", color: "#f87171", border: "0.5px solid rgba(239,68,68,0.3)" }}>
+          <div className="mb-4 px-3 py-2.5 rounded-lg text-sm bg-red-50 text-red-600 border border-red-200">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {[
-            { name: "displayName", label: "Full Name", type: "text", placeholder: "Jane Doe" },
-            { name: "username", label: "Username", type: "text", placeholder: "janedoe" },
-            { name: "email", label: "Email", type: "email", placeholder: "jane@company.com" },
-            { name: "password", label: "Password", type: "password", placeholder: "Min 8 characters" },
-          ].map((f) => (
+          {fields.map((f) => (
             <div key={f.name}>
-              <label className="block text-xs mb-1.5 font-medium" style={{ color: "#8080a8" }}>{f.label}</label>
-              <input type={f.type} name={f.name} placeholder={f.placeholder} value={form[f.name]}
-                onChange={handleChange} required
-                style={{ background: "rgba(255,255,255,0.06)", border: "0.5px solid rgba(255,255,255,0.12)", color: "#e0e0f0" }}
-                className="w-full rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition placeholder-gray-600" />
+              <label className="block text-xs mb-1.5 font-medium text-slate-500">{f.label}</label>
+              <input
+                type={f.type} name={f.name} placeholder={f.placeholder}
+                value={form[f.name]} onChange={handleChange} required
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2.5 text-sm outline-none placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+              />
             </div>
           ))}
 
-          <button type="submit" disabled={loading}
-            style={{ background: loading ? "rgba(93,95,232,0.5)" : "#5d5fe8" }}
-            className="w-full text-white p-3 rounded-lg text-sm font-medium transition-all hover:opacity-90 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+          <button
+            type="submit" disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+          >
             {loading ? (
-              <><span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />Creating…</>
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Creating…
+              </>
             ) : inviteToken ? "Create account & join" : "Create account"}
           </button>
         </form>
 
-        <p className="text-center text-sm mt-6" style={{ color: "#6060a0" }}>
+        <p className="text-center text-sm mt-6 text-slate-400">
           Already have an account?{" "}
-          <Link to={inviteToken ? `/login?invite=${inviteToken}` : "/login"} className="font-medium" style={{ color: "#8080e8" }}>Sign in</Link>
+          <Link
+            to={inviteToken ? `/login?invite=${inviteToken}` : "/login"}
+            className="font-medium text-blue-600 hover:text-blue-700"
+          >
+            Sign in
+          </Link>
         </p>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
