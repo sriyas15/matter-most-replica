@@ -1,28 +1,30 @@
-import { useNotifications } from "../context/NotificationContext";
+import { useNotifications }  from "../context/NotificationContext";
+import { useDM }             from "../context/DMContext";
+import { useWorkspace }      from "../context/WorkspaceContext";
 
 const TYPE_ICON = {
-  mention:          { icon: "ti-at",             color: "text-blue-600",   bg: "bg-blue-100"   },
-  direct_message:   { icon: "ti-message-circle", color: "text-emerald-600",bg: "bg-emerald-100"},
-  reaction:         { icon: "ti-mood-smile",      color: "text-amber-500",  bg: "bg-amber-100"  },
-  thread_reply:     { icon: "ti-message-2",       color: "text-violet-600", bg: "bg-violet-100" },
-  channel_invite:   { icon: "ti-door-enter",      color: "text-cyan-600",   bg: "bg-cyan-100"   },
-  workspace_invite: { icon: "ti-building",        color: "text-teal-600",   bg: "bg-teal-100"   },
-  system:           { icon: "ti-info-circle",     color: "text-slate-500",  bg: "bg-slate-100"  },
+  mention:          { icon: "ti-at",             color: "text-blue-600",    bg: "bg-blue-100"    },
+  direct_message:   { icon: "ti-message-circle", color: "text-emerald-600", bg: "bg-emerald-100" },
+  reaction:         { icon: "ti-mood-smile",      color: "text-amber-500",   bg: "bg-amber-100"   },
+  thread_reply:     { icon: "ti-message-2",       color: "text-violet-600",  bg: "bg-violet-100"  },
+  channel_invite:   { icon: "ti-door-enter",      color: "text-cyan-600",    bg: "bg-cyan-100"    },
+  workspace_invite: { icon: "ti-building",        color: "text-teal-600",    bg: "bg-teal-100"    },
+  system:           { icon: "ti-info-circle",     color: "text-slate-500",   bg: "bg-slate-100"   },
 };
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
+  if (mins < 1)  return "just now";
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24)  return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function NotifRow({ n, onMarkRead, onDelete }) {
-  const meta = TYPE_ICON[n.type] || TYPE_ICON.system;
-  const actor = n.actor;
+function NotifRow({ n, onMarkRead, onDelete, onNavigate }) {
+  const meta      = TYPE_ICON[n.type] || TYPE_ICON.system;
+  const actor     = n.actor;
   const actorName = actor?.displayName || actor?.username || "Someone";
   const actorInit = actorName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   const channelName = n.channel?.displayName || n.channel?.name || "";
@@ -37,11 +39,19 @@ function NotifRow({ n, onMarkRead, onDelete }) {
     system:           "System notification",
   }[n.type] || "New notification";
 
+  const isNavigable = ["direct_message", "mention", "reaction", "thread_reply"].includes(n.type);
+
+  const handleClick = () => {
+    if (!n.isRead) onMarkRead(n._id);
+    if (isNavigable) onNavigate(n);
+  };
+
   return (
     <div
-      className={`group flex gap-2.5 px-4 py-2.5 border-b border-slate-100 cursor-pointer transition-colors duration-150
+      className={`group flex gap-2.5 px-4 py-2.5 border-b border-slate-100 transition-colors duration-150
+        ${isNavigable ? "cursor-pointer" : "cursor-default"}
         ${n.isRead ? "bg-white hover:bg-slate-50" : "bg-blue-50 hover:bg-blue-100/70"}`}
-      onClick={() => !n.isRead && onMarkRead(n._id)}
+      onClick={handleClick}
     >
       {/* Unread dot */}
       {!n.isRead
@@ -82,7 +92,14 @@ function NotifRow({ n, onMarkRead, onDelete }) {
             "{n.preview}"
           </p>
         )}
-        <p className="text-[10px] text-slate-400">{timeAgo(n.createdAt)}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-[10px] text-slate-400">{timeAgo(n.createdAt)}</p>
+          {isNavigable && (
+            <span className="text-[10px] text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              → jump to
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Delete */}
@@ -99,8 +116,39 @@ function NotifRow({ n, onMarkRead, onDelete }) {
 
 export default function NotificationPanel({ open, onClose }) {
   const { notifications, unreadCount, loading, markRead, markAllRead, deleteOne } = useNotifications();
+  const { dms, selectDM, openDMWithUser }  = useDM();
+  const { channels, selectChannel }        = useWorkspace();
 
   if (!open) return null;
+
+  const handleNavigate = (n) => {
+    if (n.type === "direct_message") {
+      // Find the DM that contains this channel and open it
+      const dm = dms.find((d) => {
+        const dmChannelId = d.channel?._id?.toString() ?? d.channel?.toString();
+        const nChannelId  = n.channel?._id?.toString() ?? n.channel?.toString();
+        return dmChannelId === nChannelId;
+      });
+      if (dm) {
+        selectDM(dm);
+      } else if (n.actor) {
+        // DM not in list yet — create/open it
+        openDMWithUser(n.actor);
+      }
+      onClose();
+      return;
+    }
+
+    // mention / reaction / thread_reply — jump to the channel
+    if (n.channel) {
+      const channelId = n.channel?._id ?? n.channel;
+      const ch = channels.find((c) => c._id?.toString() === channelId?.toString());
+      if (ch) {
+        selectChannel(ch);
+        onClose();
+      }
+    }
+  };
 
   return (
     <>
@@ -110,7 +158,7 @@ export default function NotificationPanel({ open, onClose }) {
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-slate-100 flex-shrink-0 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-600 text-slate-800 font-semibold">Notifications</span>
+            <span className="text-sm font-semibold text-slate-800">Notifications</span>
             {unreadCount > 0 && (
               <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
                 {unreadCount}
@@ -152,7 +200,13 @@ export default function NotificationPanel({ open, onClose }) {
           )}
 
           {!loading && notifications.map((n) => (
-            <NotifRow key={n._id} n={n} onMarkRead={markRead} onDelete={deleteOne} />
+            <NotifRow
+              key={n._id}
+              n={n}
+              onMarkRead={markRead}
+              onDelete={deleteOne}
+              onNavigate={handleNavigate}
+            />
           ))}
         </div>
       </div>

@@ -117,18 +117,18 @@ export function ChatProvider({ children }) {
   }, [socketReady, activeChannel?._id, activeWorkspace?._id]);
 
   // ── Send message ───────────────────────────────────────────────────────────
-  const sendMessage = useCallback(async (text) => {
-    if (!activeChannel || !activeWorkspace) return;
-    const { data } = await api.post(
-      `/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}/messages`,
-      { text }
-    );
-    setMessages((prev) => {
-      if (prev.find((m) => m._id === data.data._id)) return prev;
-      return [...prev, data.data];
-    });
-    return data.data;
-  }, [activeChannel?._id, activeWorkspace?._id]);
+const sendMessage = useCallback(async (text, attachmentIds = []) => {
+  if (!activeChannel || !activeWorkspace) return;
+  const { data } = await api.post(
+    `/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}/messages`,
+    { text, attachments: attachmentIds }   // ← pass IDs; backend resolves to sub-docs
+  );
+  setMessages((prev) => {
+    if (prev.find((m) => m._id === data.data._id)) return prev;
+    return [...prev, data.data];
+  });
+  return data.data;
+}, [activeChannel?._id, activeWorkspace?._id]);
 
   // ── Load older messages ────────────────────────────────────────────────────
   const loadMoreMessages = useCallback(async () => {

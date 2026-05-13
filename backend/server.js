@@ -6,7 +6,7 @@ import { initSocket } from "./socket/index.js";
 
 dotenv.config({ path: "backend/.env" });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 const start = async () => {

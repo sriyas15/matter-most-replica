@@ -1,16 +1,47 @@
 import Message from "../models/Message.js";
 import Channel from "../models/Channel.js";
+import File from "../models/File.js";
 import { createNotification } from "./notificationController.js";
 import { getIO } from "../socket/index.js";
+
+// ── Resolve File _id strings → Message attachment sub-documents ───────────────
+const buildAttachments = async (attachmentIds = [], workspaceId) => {
+  if (!attachmentIds.length) return [];
+
+  const files = await File.find({
+    _id:       { $in: attachmentIds },
+    workspace: workspaceId,
+    isDeleted: false,
+  }).lean();
+
+  return files.map((f) => ({
+    // Message attachmentSchema expects: type, url, filename, mimeType, size, width, height, thumbnailUrl
+    type:         f.fileType === "document" || f.fileType === "archive" ? "file" : f.fileType,
+    url:          f.url,
+    filename:     f.originalName,
+    mimeType:     f.mimeType,
+    size:         f.size,
+    width:        f.width  ?? null,
+    height:       f.height ?? null,
+    thumbnailUrl: f.thumbnailUrl ?? null,
+  }));
+};
 
 // ── POST /api/workspaces/:workspaceId/channels/:channelId/messages ────────────
 export const sendMessage = async (req, res) => {
   try {
     const { workspaceId, channelId } = req.params;
-    const { text, parentMessageId, attachments = [], mentions = [], channelMentions = [] } = req.body;
+    const {
+      text,
+      parentMessageId,
+      attachments: attachmentIds = [],  // array of File _id strings from frontend
+      mentions        = [],
+      channelMentions = [],
+    } = req.body;
+
     const userId = req.user._id;
 
-    if (!text?.trim() && !attachments.length)
+    if (!text?.trim() && !attachmentIds.length)
       return res.status(400).json({ success: false, message: "Message cannot be empty" });
 
     const channel = await Channel.findById(channelId);
@@ -26,96 +57,91 @@ export const sendMessage = async (req, res) => {
         return res.status(403).json({ success: false, message: "Channel is read-only" });
     }
 
-    // Validate parent message for threads
     if (parentMessageId) {
-      const parent = await Message.findOne({ _id: parentMessageId, channel: channelId, isDeleted: false });
+      const parent = await Message.findOne({
+        _id: parentMessageId,
+        channel: channelId,
+        isDeleted: false,
+      });
       if (!parent)
         return res.status(404).json({ success: false, message: "Parent message not found" });
     }
 
+    // Resolve File IDs → properly shaped attachment sub-documents
+    const attachments = await buildAttachments(attachmentIds, workspaceId);
+
     const message = await Message.create({
-      channel: channelId,
-      workspace: workspaceId,
-      sender: userId,
-      text: text?.trim() ?? "",
-      parentMessage: parentMessageId || null,
-      attachments,
+      channel:        channelId,
+      workspace:      workspaceId,
+      sender:         userId,
+      text:           text?.trim() ?? "",
+      parentMessage:  parentMessageId || null,
+      attachments,                          // ← sub-documents, not raw IDs
       mentions,
       channelMentions,
     });
 
+    // Back-link File docs to the created message
+    if (attachmentIds.length) {
+      await File.updateMany(
+        { _id: { $in: attachmentIds } },
+        { message: message._id, channel: channelId }
+      );
+    }
+
     await message.populate("sender", "username displayName avatar avatarColor");
 
-    // Update parent thread stats
     if (parentMessageId) {
       await Message.findByIdAndUpdate(parentMessageId, {
-        $inc: { replyCount: 1 },
+        $inc:      { replyCount: 1 },
         $addToSet: { replyParticipants: userId },
       });
     }
 
-    // Update channel last activity
     await Channel.findByIdAndUpdate(channelId, {
       lastActivityAt: new Date(),
       lastMessage: {
-        text: text?.slice(0, 100) ?? "",
+        text:   text?.slice(0, 100) ?? (attachments[0]?.filename || ""),
         sender: userId,
         sentAt: new Date(),
       },
     });
 
-    // Fire mention notifications (non-blocking)
-    // if (mentions.length) {
-    //   mentions.forEach((mentionedUserId) => {
-    //     if (mentionedUserId.toString() !== userId.toString()) {
-    //       createNotification({
-    //         recipientId: mentionedUserId,
-    //         workspaceId,
-    //         type: "mention",
-    //         actorId: userId,
-    //         messageId: message._id,
-    //         channelId,
-    //         preview: text?.slice(0, 120) ?? "",
-    //       });
-    //     }
-    //   });
-    // }
     const io = getIO();
     io.to(`channel:${channelId}`).emit("message:new", message);
 
-    // Fire mention notifications
     if (mentions?.length) {
       mentions.forEach((mentionedUserId) => {
         if (mentionedUserId.toString() !== userId.toString()) {
           createNotification({
             recipientId: mentionedUserId,
             workspaceId,
-            type: "mention",
-            actorId: userId,
-            messageId: message._id,
+            type:        "mention",
+            actorId:     userId,
+            messageId:   message._id,
             channelId,
-            preview: text?.slice(0, 120) ?? "",
+            preview:     text?.slice(0, 120) ?? "",
           });
         }
       });
     }
 
-    // Fire DM notification if this is a direct/group channel
     if (channel.type === "direct" || channel.type === "group") {
       channel.members.forEach(({ user: memberId }) => {
         if (memberId.toString() !== userId.toString()) {
           createNotification({
             recipientId: memberId,
             workspaceId,
-            type: "direct_message",
-            actorId: userId,
-            messageId: message._id,
+            type:        "direct_message",
+            actorId:     userId,
+            messageId:   message._id,
             channelId,
-            preview: text?.slice(0, 120) ?? "",
+            preview:     text?.slice(0, 120) ?? "",
           });
         }
       });
     }
+
     res.status(201).json({ success: true, data: message });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -138,7 +164,7 @@ export const getMessages = async (req, res) => {
 
     const query = { channel: channelId, isDeleted: false, parentMessage: null };
     if (before) query.createdAt = { $lt: new Date(before) };
-    if (after) query.createdAt = { ...(query.createdAt || {}), $gt: new Date(after) };
+    if (after)  query.createdAt = { ...(query.createdAt || {}), $gt: new Date(after) };
 
     const messages = await Message.find(query)
       .sort({ createdAt: -1 })
@@ -147,7 +173,11 @@ export const getMessages = async (req, res) => {
       .populate("replyParticipants", "username displayName avatar")
       .lean();
 
-    res.json({ success: true, data: messages.reverse(), hasMore: messages.length === Number(limit) });
+    res.json({
+      success: true,
+      data:    messages.reverse(),
+      hasMore: messages.length === Number(limit),
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -157,7 +187,7 @@ export const getMessages = async (req, res) => {
 export const getThread = async (req, res) => {
   try {
     const { channelId, messageId } = req.params;
-    const { limit = 50, before } = req.query;
+    const { limit = 50, before }   = req.query;
 
     const root = await Message.findOne({ _id: messageId, channel: channelId })
       .populate("sender", "username displayName avatar avatarColor");
@@ -183,8 +213,8 @@ export const getThread = async (req, res) => {
 export const editMessage = async (req, res) => {
   try {
     const { messageId } = req.params;
-    const { text } = req.body;
-    const userId = req.user._id;
+    const { text }      = req.body;
+    const userId        = req.user._id;
 
     if (!text?.trim())
       return res.status(400).json({ success: false, message: "Message text cannot be empty" });
@@ -199,7 +229,7 @@ export const editMessage = async (req, res) => {
     if (message.messageType !== "user")
       return res.status(400).json({ success: false, message: "Cannot edit system messages" });
 
-    message.text = text.trim();
+    message.text     = text.trim();
     message.isEdited = true;
     message.editedAt = new Date();
     await message.save();
@@ -209,7 +239,7 @@ export const editMessage = async (req, res) => {
     const io = getIO();
     io.to(`channel:${message.channel}`).emit("message:updated", {
       messageId,
-      text: message.text,
+      text:     message.text,
       isEdited: true,
       editedAt: message.editedAt,
     });
@@ -230,10 +260,10 @@ export const deleteMessage = async (req, res) => {
     if (!message)
       return res.status(404).json({ success: false, message: "Message not found" });
 
-    const isOwner = message.sender.toString() === userId.toString();
-    const isAdmin = req.userWorkspaceRole === "admin" || req.userWorkspaceRole === "owner";
+    const isOwner    = message.sender.toString() === userId.toString();
+    const isElevated = req.userWorkspaceRole === "admin" || req.userWorkspaceRole === "owner";
 
-    if (!isOwner && !isAdmin)
+    if (!isOwner && !isElevated)
       return res.status(403).json({ success: false, message: "Not authorized" });
 
     await message.softDelete();
@@ -250,9 +280,9 @@ export const deleteMessage = async (req, res) => {
 // ── POST /api/workspaces/:workspaceId/channels/:channelId/messages/:messageId/react
 export const reactToMessage = async (req, res) => {
   try {
-    const { messageId } = req.params;
-    const { emoji } = req.body;
-    const userId = req.user._id;
+    const { messageId, workspaceId } = req.params;
+    const { emoji }  = req.body;
+    const userId     = req.user._id;
 
     if (!emoji)
       return res.status(400).json({ success: false, message: "Emoji is required" });
@@ -263,16 +293,15 @@ export const reactToMessage = async (req, res) => {
 
     await message.toggleReaction(emoji, userId);
 
-    // Notify message author (if someone else reacted)
     if (message.sender.toString() !== userId.toString()) {
       createNotification({
         recipientId: message.sender,
         workspaceId: message.workspace,
-        type: "reaction",
-        actorId: userId,
-        messageId: message._id,
-        channelId: message.channel,
-        preview: emoji,
+        type:        "reaction",
+        actorId:     userId,
+        messageId:   message._id,
+        channelId:   message.channel,
+        preview:     emoji,
       });
     }
 
@@ -297,14 +326,20 @@ export const pinMessage = async (req, res) => {
     if (!member || member.role !== "admin")
       return res.status(403).json({ success: false, message: "Channel admin only" });
 
-    const message = await Message.findOne({ _id: messageId, channel: channelId, isDeleted: false });
+    const message = await Message.findOne({
+      _id: messageId, channel: channelId, isDeleted: false,
+    });
     if (!message)
       return res.status(404).json({ success: false, message: "Message not found" });
 
-    const alreadyPinned = channel.pinnedMessages.some((id) => id.toString() === messageId);
+    const alreadyPinned = channel.pinnedMessages.some(
+      (id) => id.toString() === messageId
+    );
 
     if (alreadyPinned) {
-      channel.pinnedMessages = channel.pinnedMessages.filter((id) => id.toString() !== messageId);
+      channel.pinnedMessages = channel.pinnedMessages.filter(
+        (id) => id.toString() !== messageId
+      );
       message.isPinned = false;
     } else {
       channel.pinnedMessages.push(messageId);
@@ -312,7 +347,6 @@ export const pinMessage = async (req, res) => {
     }
 
     await Promise.all([channel.save(), message.save()]);
-
     res.json({ success: true, isPinned: message.isPinned });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -324,7 +358,6 @@ export const searchMessages = async (req, res) => {
   try {
     const { workspaceId } = req.params;
     const { q, channelId, page = 1, limit = 20 } = req.query;
-    const userId = req.user._id;
 
     if (!q?.trim())
       return res.status(400).json({ success: false, message: "Query is required" });
@@ -343,16 +376,20 @@ export const searchMessages = async (req, res) => {
         .sort({ score: { $meta: "textScore" }, createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate("sender", "username displayName avatar")
+        .populate("sender",  "username displayName avatar")
         .populate("channel", "name displayName")
         .lean(),
       Message.countDocuments(query),
     ]);
 
     res.json({
-      success: true,
-      data: messages,
-      pagination: { total, page: Number(page), pages: Math.ceil(total / Number(limit)) },
+      success:    true,
+      data:       messages,
+      pagination: {
+        total,
+        page:  Number(page),
+        pages: Math.ceil(total / Number(limit)),
+      },
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

@@ -141,19 +141,19 @@ export function DMProvider({ children }) {
   const closeDM = useCallback(() => setActiveDM(null), []);
 
   // ── Send DM message ─────────────────────────────────────────────────────────
-  const sendDMMessage = useCallback(async (text) => {
-    if (!activeDM || !activeWorkspace || !text.trim()) return;
-    const channelId = activeDM.channel?._id || activeDM.channel;
-    const { data } = await api.post(
-      `/workspaces/${activeWorkspace._id}/channels/${channelId}/messages`,
-      { text }
-    );
-    setDmMessages((prev) => {
-      if (prev.find((m) => m._id === data.data._id)) return prev;
-      return [...prev, data.data];
-    });
-    return data.data;
-  }, [activeDM?._id, activeWorkspace?._id]);
+  const sendDMMessage = useCallback(async (text, attachmentIds = []) => {
+  if (!activeDM || !activeWorkspace) return;
+  const channelId = activeDM.channel?._id || activeDM.channel;
+  const { data } = await api.post(
+    `/workspaces/${activeWorkspace._id}/channels/${channelId}/messages`,
+    { text, attachments: attachmentIds }   // ← pass IDs; backend resolves to sub-docs
+  );
+  setDmMessages((prev) => {
+    if (prev.find((m) => m._id === data.data._id)) return prev;
+    return [...prev, data.data];
+  });
+  return data.data;
+}, [activeDM?._id, activeWorkspace?._id]);
 
   const totalDMUnread = Object.values(dmUnread).reduce((a, b) => a + b, 0);
 

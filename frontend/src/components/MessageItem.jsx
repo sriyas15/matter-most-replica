@@ -25,6 +25,82 @@ function renderText(raw = "") {
   });
 }
 
+// ─── Attachment renderer ──────────────────────────────────────────────────────
+
+function MessageAttachments({ attachments = [] }) {
+  if (!attachments?.length) return null;
+
+  return (
+    <div className="flex flex-col gap-1.5 mt-1">
+      {attachments.map((att, i) => {
+        if (att.type === "image") {
+          return (
+            <a key={i} href={att.url} target="_blank" rel="noopener noreferrer" className="inline-block">
+              <img
+                src={att.url}
+                alt={att.filename || "image"}
+                className="max-w-[320px] max-h-[260px] rounded-lg object-cover border border-slate-200 hover:opacity-90 transition-opacity"
+              />
+            </a>
+          );
+        }
+
+        if (att.type === "video") {
+          return (
+            <video key={i} src={att.url} controls className="max-w-[320px] rounded-lg border border-slate-200">
+              Your browser does not support video.
+            </video>
+          );
+        }
+
+        if (att.type === "audio") {
+          return (
+            <div key={i} className="flex flex-col gap-0.5">
+              {att.filename && (
+                <span className="text-[11px] text-slate-400 truncate max-w-[260px]">{att.filename}</span>
+              )}
+              <audio src={att.url} controls className="max-w-[280px]">
+                Your browser does not support audio.
+              </audio>
+            </div>
+          );
+        }
+
+        // Document / archive / other
+        const sizeLabel = att.size
+          ? att.size > 1048576
+            ? `${(att.size / 1048576).toFixed(1)} MB`
+            : `${(att.size / 1024).toFixed(0)} KB`
+          : null;
+
+        return (
+          <a
+            key={i}
+            href={att.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            download={att.filename}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors max-w-[280px]"
+          >
+            <i className="ti ti-file-text text-[16px] text-blue-500 flex-shrink-0" />
+            <div className="flex flex-col min-w-0">
+              <span className="text-[12px] font-medium text-slate-700 truncate">
+                {att.filename || "Download file"}
+              </span>
+              {sizeLabel && (
+                <span className="text-[10px] text-slate-400">{sizeLabel}</span>
+              )}
+            </div>
+            <i className="ti ti-download text-[13px] text-slate-400 ml-auto flex-shrink-0" />
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function MessageItem({ message, isConsecutive }) {
   const { user } = useAuth();
   const { activeWorkspace, activeChannel } = useWorkspace();
@@ -35,8 +111,8 @@ export default function MessageItem({ message, isConsecutive }) {
 
   const isMine = message.sender?._id === user?._id || message.sender === user?._id;
   const sender = message.sender || {};
-  const name = sender.displayName || sender.name || sender.username || "Unknown";
-  const time = formatTime(message.createdAt || message.timestamp);
+  const name   = sender.displayName || sender.name || sender.username || "Unknown";
+  const time   = formatTime(message.createdAt || message.timestamp);
 
   const apiBase = () =>
     `/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}/messages/${message._id}`;
@@ -68,6 +144,7 @@ export default function MessageItem({ message, isConsecutive }) {
     return acc;
   }, {});
 
+  // ── Consecutive (grouped) message ─────────────────────────────────────────
   if (isConsecutive) {
     return (
       <div
@@ -108,9 +185,12 @@ export default function MessageItem({ message, isConsecutive }) {
                   </>
                 )}
               </div>
-              <p className="text-[13px] text-slate-700 leading-relaxed break-words">
-                {renderText(message.text)}
-              </p>
+              {message.text && (
+                <p className="text-[13px] text-slate-700 leading-relaxed break-words">
+                  {renderText(message.text)}
+                </p>
+              )}
+              <MessageAttachments attachments={message.attachments} />
             </>
           )}
           <ReactionRow reactions={reactionMap} onReact={handleReact} userId={user?._id} />
@@ -119,13 +199,14 @@ export default function MessageItem({ message, isConsecutive }) {
     );
   }
 
+  // ── First message in a group ───────────────────────────────────────────────
   return (
     <div
       className="flex gap-2.5 py-0.5 hover:bg-slate-50 rounded-md px-1 transition-colors relative"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <Avatar user={user} size={32} showStatus />
+      <Avatar user={sender} size={32} showStatus />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 mb-0.5">
@@ -152,9 +233,14 @@ export default function MessageItem({ message, isConsecutive }) {
             onCancel={() => { setEditing(false); setEditText(message.text); }}
           />
         ) : (
-          <p className="text-[13px] text-slate-700 leading-relaxed break-words">
-            {renderText(message.text)}
-          </p>
+          <>
+            {message.text && (
+              <p className="text-[13px] text-slate-700 leading-relaxed break-words">
+                {renderText(message.text)}
+              </p>
+            )}
+            <MessageAttachments attachments={message.attachments} />
+          </>
         )}
 
         <ReactionRow reactions={reactionMap} onReact={handleReact} userId={user?._id} />
@@ -162,6 +248,8 @@ export default function MessageItem({ message, isConsecutive }) {
     </div>
   );
 }
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function EditBox({ value, onChange, onSave, onCancel }) {
   return (
@@ -223,7 +311,7 @@ function ReactionRow({ reactions, onReact, userId }) {
 
 function MessageActions({ isMine, onEdit, onDelete, onReact }) {
   const [emojiOpen, setEmojiOpen] = useState(false);
-  const [dotsOpen, setDotsOpen] = useState(false);
+  const [dotsOpen, setDotsOpen]   = useState(false);
 
   return (
     <div className="flex gap-0.5 bg-white border border-slate-200 shadow-sm rounded-md px-1 py-0.5 shrink-0 self-center">

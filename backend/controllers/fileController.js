@@ -1,42 +1,57 @@
 import File from "../models/File.js";
 import Message from "../models/Message.js";
 import path from "path";
+import { uploadToCloudinary, deleteFromCloudinary } from "../utils/uploadToCloudinary.js";
 
 // ── POST /workspaces/:workspaceId/files/upload
 // Upload a file (expects middleware to handle multipart; req.uploadedFile = processed file info)
 export const uploadFile = async (req, res) => {
   try {
     const { workspaceId } = req.params;
-    const { messageId, channelId } = req.body;
-    const userId = req.user._id;
-
-    // Expect upload middleware (e.g. multer + S3) to attach this
-    const uploaded = req.uploadedFile;
-    if (!uploaded) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
+ 
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No file provided" });
     }
-
+ 
+    const { buffer, mimetype, originalname, size } = req.file;
+ 
+    // Upload to Cloudinary
+    const result = await uploadToCloudinary(
+      buffer,
+      mimetype,
+      originalname,
+      `workspaces/${workspaceId}`
+    );
+ 
+    // Persist metadata in MongoDB
     const file = await File.create({
-      uploader: userId,
-      workspace: workspaceId,
-      message: messageId || null,
-      channel: channelId || null,
-      originalName: uploaded.originalName,
-      storedName: uploaded.storedName,
-      url: uploaded.url,
-      thumbnailUrl: uploaded.thumbnailUrl || null,
-      mimeType: uploaded.mimeType,
-      size: uploaded.size,
-      width: uploaded.width || null,
-      height: uploaded.height || null,
-      duration: uploaded.duration || null,
-      storageProvider: uploaded.storageProvider || "local",
-      storageMeta: uploaded.storageMeta || {},
+      uploader:        req.user._id,
+      workspace:       workspaceId,
+      originalName:    originalname,
+      storedName:      result.public_id,
+      url:             result.secure_url,
+      mimeType:        mimetype,
+      size,
+      storageProvider: "cloudinary",
+      storageMeta:     {
+        publicId:     result.public_id,
+        resourceType: result.resource_type,
+        format:       result.format,
+        version:      result.version,
+      },
+      // Image / video dimensions when available
+      width:  result.width  || null,
+      height: result.height || null,
+      // Cloudinary doesn't return duration for audio via upload_stream;
+      // leave null — can be enriched later via a video info call if needed
+      duration: result.duration || null,
+      scanStatus: "skipped", // integrate a virus-scan service here if needed
     });
-
-    res.status(201).json({ success: true, data: file });
+ 
+    return res.status(201).json({ success: true, data: file });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("[uploadFile]", err);
+    return res.status(500).json({ success: false, message: err.message || "Upload failed" });
   }
 };
 
@@ -83,51 +98,50 @@ export const getWorkspaceFiles = async (req, res) => {
 // Get a single file's metadata
 export const getFile = async (req, res) => {
   try {
-    const { fileId } = req.params;
-
-    const file = await File.findOne({ _id: fileId, isDeleted: false })
-      .populate("uploader", "username displayName avatar")
-      .populate("channel", "name displayName")
-      .populate("message", "text createdAt");
-
+    const file = await File.findOne({
+      _id:       req.params.fileId,
+      workspace: req.params.workspaceId,
+      isDeleted: false,
+    });
     if (!file) return res.status(404).json({ success: false, message: "File not found" });
-
-    res.json({ success: true, data: file });
+    return res.json({ success: true, data: file });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
 // ── DELETE /workspaces/:workspaceId/files/:fileId
 // Soft-delete a file (uploader or workspace admin only)
+
 export const deleteFile = async (req, res) => {
   try {
-    const { fileId, workspaceId } = req.params;
-    const userId = req.user._id;
-
-    const file = await File.findOne({ _id: fileId, workspace: workspaceId, isDeleted: false });
+    const file = await File.findOne({
+      _id:       req.params.fileId,
+      workspace: req.params.workspaceId,
+      isDeleted: false,
+    });
+ 
     if (!file) return res.status(404).json({ success: false, message: "File not found" });
-
-    const isOwner = file.uploader.toString() === userId.toString();
-    const isAdmin = req.userWorkspaceRole === "admin" || req.userWorkspaceRole === "owner";
-
-    if (!isOwner && !isAdmin) {
-      return res.status(403).json({ success: false, message: "Not authorized to delete this file" });
+ 
+    // Only uploader or admin may delete
+    const isOwner   = file.uploader.toString() === req.user._id.toString();
+    const isElevated = ["owner", "admin"].includes(req.userWorkspaceRole);
+    if (!isOwner && !isElevated) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
-
-    await file.softDelete();
-
-    // Remove from any message attachments
-    if (file.message) {
-      await Message.updateOne(
-        { _id: file.message },
-        { $pull: { attachments: { url: file.url } } }
+ 
+    // Remove from Cloudinary
+    if (file.storageMeta?.publicId) {
+      await deleteFromCloudinary(
+        file.storageMeta.publicId,
+        file.storageMeta.resourceType || "raw"
       );
     }
-
-    res.json({ success: true, message: "File deleted" });
+ 
+    await file.softDelete();
+    return res.json({ success: true, message: "File deleted" });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
