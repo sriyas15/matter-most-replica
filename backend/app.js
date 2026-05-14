@@ -20,7 +20,7 @@ app.use(helmet());
 console.log(process.env.CLIENT_URL)
 app.use(
   cors({
-    origin: "http://localhost:3000",//https://matter-most-replica.vercel.app
+    origin: "https://matter-most-replica.vercel.app",//"http://localhost:3000",//https://matter-most-replica.vercel.app
     credentials: true,           // allow cookies (refresh token)
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -31,15 +31,6 @@ app.use(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
-
-// ── Sanitise MongoDB operators in req.body / req.query / req.params ───────────
-// app.use(
-//   mongoSanitize({
-//     replaceWith: "_",
-//     allowDots: true,
-//     sanitizeQuery: false
-//   })
-// );
 
 // ── HTTP request logger ───────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== "test") {
