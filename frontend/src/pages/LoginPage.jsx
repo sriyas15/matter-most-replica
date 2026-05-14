@@ -64,19 +64,19 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs mb-1.5 font-medium text-slate-500">Email</label>
+            <label className="block text-xs mb-1.5 font-medium text-black">Email</label>
             <input
               type="email" name="email" placeholder="you@company.com"
               value={form.email} onChange={handleChange} required
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2.5 text-sm outline-none placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none text-black focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
             />
           </div>
           <div>
-            <label className="block text-xs mb-1.5 font-medium text-slate-500">Password</label>
+            <label className="block text-xs mb-1.5 font-medium text-black">Password</label>
             <input
               type="password" name="password" placeholder="••••••••"
               value={form.password} onChange={handleChange} required
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2.5 text-sm outline-none placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
             />
           </div>
 
