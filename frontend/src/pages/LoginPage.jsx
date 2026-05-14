@@ -4,13 +4,13 @@ import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
 
 export default function LoginPage() {
-  const { login }             = useAuth();
-  const navigate              = useNavigate();
-  const [searchParams]        = useSearchParams();
-  const inviteToken           = searchParams.get("invite") || sessionStorage.getItem("pendingInviteToken");
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("invite") || sessionStorage.getItem("pendingInviteToken");
 
-  const [form, setForm]       = useState({ email: "", password: "" });
-  const [error, setError]     = useState("");
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -22,7 +22,7 @@ export default function LoginPage() {
     try {
       await login(form.email, form.password);
       if (inviteToken) {
-        try { await api.post(`/workspaces/join/${inviteToken}`); } catch {}
+        try { await api.post(`/workspaces/join/${inviteToken}`); } catch { }
         sessionStorage.removeItem("pendingInviteToken");
       }
       navigate("/");
@@ -64,7 +64,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs mb-1.5 font-medium text-slate-500">Email or Username</label>
+            <label className="block text-xs mb-1.5 font-medium text-slate-500">Email</label>
             <input
               type="email" name="email" placeholder="you@company.com"
               value={form.email} onChange={handleChange} required

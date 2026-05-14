@@ -1,18 +1,7 @@
 import Message from "../../models/Message.js";
 import Channel from "../../models/Channel.js";
+import { createNotification } from "../../controllers/notificationController.js";
 
-/**
- * Events handled:
- *  message:send       → broadcast new message to channel room
- *  message:edit       → broadcast edited message
- *  message:delete     → broadcast soft-deleted message
- *  message:react      → toggle reaction, broadcast updated reactions
- *  message:pin        → pin/unpin, notify channel
- *  channel:join       → join socket room for a channel
- *  channel:leave      → leave socket room for a channel
- *  message:typing     → forward typing indicator to channel room
- *  message:stop_typing→ forward stop-typing to channel room
- */
 export const registerMessageHandlers = (io, socket) => {
   const { user } = socket;
 
@@ -40,34 +29,56 @@ export const registerMessageHandlers = (io, socket) => {
 
       if (parentMessageId) {
         await Message.incrementReplyStats(parentMessageId, user._id);
+
+        // Notify the parent message author (thread reply)
+        const parent = await Message.findById(parentMessageId).select("sender");
+        if (parent && parent.sender.toString() !== user._id.toString()) {
+          await createNotification({
+            recipientId: parent.sender,
+            workspaceId: channel.workspace,
+            type:        "thread_reply",
+            actorId:     user._id,
+            messageId:   message._id,
+            channelId,
+            preview:     text,
+          });
+        }
       }
 
       await Channel.findByIdAndUpdate(channelId, {
-        lastMessage: { text, sender: user._id, sentAt: new Date() },
+        lastMessage:    { text, sender: user._id, sentAt: new Date() },
         lastActivityAt: new Date(),
       });
 
       const populated = await message.populate([
-        { path: "sender", select: "displayName avatar avatarColor username" },
+        { path: "sender",           select: "displayName avatar avatarColor username" },
         { path: "attachments.fileRef" },
       ]);
 
       io.to(`channel:${channelId}`).emit("message:new", populated);
 
+      // ── Mention notifications ─────────────────────────────────────────────
       if (mentionHandles.length) {
         const User = (await import("../../models/User.js")).default;
         const mentioned = await User.find({
           username: { $in: mentionHandles },
         }).select("_id");
 
-        mentioned.forEach(({ _id }) => {
-          if (_id.toString() !== user._id.toString()) {
-            io.to(`user:${_id}`).emit("notification:mention", {
-              message: populated,
-              channelId,
-            });
-          }
-        });
+        await Promise.all(
+          mentioned
+            .filter(({ _id }) => _id.toString() !== user._id.toString())
+            .map(({ _id }) =>
+              createNotification({
+                recipientId: _id,
+                workspaceId: channel.workspace,
+                type:        "mention",
+                actorId:     user._id,
+                messageId:   message._id,
+                channelId,
+                preview:     text,
+              })
+            )
+        );
       }
 
       ack?.({ success: true, message: populated });
@@ -88,7 +99,7 @@ export const registerMessageHandlers = (io, socket) => {
         return ack?.({ success: false, error: "Cannot edit someone else's message" });
       }
 
-      message.text = text;
+      message.text     = text;
       message.isEdited = true;
       message.editedAt = new Date();
       await message.save();
@@ -115,7 +126,7 @@ export const registerMessageHandlers = (io, socket) => {
       const message = await Message.findById(messageId);
       if (!message) return ack?.({ success: false, error: "Message not found" });
 
-      const isOwner = message.sender.toString() === user._id.toString();
+      const isOwner    = message.sender.toString() === user._id.toString();
       const isElevated = ["owner", "admin"].includes(user.role);
 
       if (!isOwner && !isElevated) {
@@ -147,6 +158,20 @@ export const registerMessageHandlers = (io, socket) => {
         reactions: message.reactions,
       });
 
+      // Notify message author of the reaction
+      if (message.sender.toString() !== user._id.toString()) {
+        const channel = await Channel.findById(message.channel).select("workspace");
+        await createNotification({
+          recipientId: message.sender,
+          workspaceId: channel?.workspace,
+          type:        "reaction",
+          actorId:     user._id,
+          messageId:   message._id,
+          channelId:   message.channel,
+          preview:     emoji,
+        });
+      }
+
       ack?.({ success: true, reactions: message.reactions });
     } catch (err) {
       console.error("[message:react]", err);
@@ -167,7 +192,7 @@ export const registerMessageHandlers = (io, socket) => {
 
       const update = pin
         ? { $addToSet: { pinnedMessages: messageId } }
-        : { $pull: { pinnedMessages: messageId } };
+        : { $pull:     { pinnedMessages: messageId } };
       await Channel.findByIdAndUpdate(message.channel, update);
 
       io.to(`channel:${message.channel}`).emit("message:pin_updated", {
@@ -205,7 +230,7 @@ export const registerMessageHandlers = (io, socket) => {
   // ── Typing indicators ───────────────────────────────────────────────────────
   socket.on("message:typing", ({ channelId }) => {
     socket.to(`channel:${channelId}`).emit("message:typing", {
-      userId: user._id,
+      userId:      user._id,
       displayName: user.displayName || user.username || "Someone",
       channelId,
     });

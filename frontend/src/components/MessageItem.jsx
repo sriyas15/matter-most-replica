@@ -206,7 +206,7 @@ export default function MessageItem({ message, isConsecutive }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <Avatar user={sender} size={32} showStatus />
+      <Avatar user={user} size={32} showStatus />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 mb-0.5">

@@ -7,8 +7,6 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser]           = useState(null);
   const [loading, setLoading]     = useState(true);
-  // FIX: track when the socket is actually connected so consumers
-  // (ChatContext, DMContext) know when it's safe to register listeners
   const [socketReady, setSocketReady] = useState(false);
 
   const initSocket = () => {
@@ -21,7 +19,6 @@ export function AuthProvider({ children }) {
       });
     });
 
-    // FIX: flip socketReady only after the socket confirms connection
     if (socket.connected) {
       setSocketReady(true);
     } else {
