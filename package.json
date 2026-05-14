@@ -5,7 +5,8 @@
   "scripts": {
     "client": "cd frontend && npm run dev",
     "server": "nodemon backend/server.js",
-    "start": "concurrently \"npm run server\" \"npm run client\""
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "type": "module",
   "author": "",
@@ -29,5 +30,10 @@
     "nodemon": "^3.1.14",
     "socket.io": "^4.8.3",
     "streamifier": "^0.1.1"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.4.1",
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
   }
 }

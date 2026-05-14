@@ -18,7 +18,7 @@ const STATUS_COLOR = {
 
 // ── Workspace Settings Modal ──────────────────────────────────────────────────
 function WorkspaceSettingsModal({ onClose }) {
-  const { activeWorkspace, selectWorkspace } = useWorkspace();
+const { activeWorkspace, selectWorkspace } = useWorkspace();
   const [form, setForm] = useState({
     name: activeWorkspace?.name || "",
     description: activeWorkspace?.description || "",
@@ -248,7 +248,10 @@ function SectionHeader({ title, collapsed, onToggle, onAdd }) {
 // ── Channel row ───────────────────────────────────────────────────────────────
 function ChannelItem({ channel, active, onClick, unread }) {
   const [hovered, setHovered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { activeWorkspace, updateChannel } = useWorkspace();
+
+  const isGeneral = channel.name === "general";
 
   const handleFavorite = async (e) => {
     e.stopPropagation();
@@ -270,12 +273,23 @@ function ChannelItem({ channel, active, onClick, unread }) {
     } catch {}
   };
 
+  const handleLeave = async (e) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    try {
+      await api.delete(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/leave`);
+      // Remove from local list
+      updateChannel({ ...channel, isMember: false });
+      // Optionally refetch channels — depends on your UX preference
+    } catch {}
+  };
+
   return (
     <div
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors ${
+      onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
+      className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors relative ${
         active ? "bg-blue-50" : "hover:bg-slate-50"
       }`}
     >
@@ -295,7 +309,7 @@ function ChannelItem({ channel, active, onClick, unread }) {
       </span>
 
       {hovered && !active && (
-        <div className="flex gap-0.5 ml-auto">
+        <div className="flex gap-0.5 ml-auto" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={handleFavorite}
             title={channel.isFavorited ? "Unfavorite" : "Favorite"}
@@ -314,6 +328,31 @@ function ChannelItem({ channel, active, onClick, unread }) {
           >
             <i className={`ti ${channel.isMuted ? "ti-bell-off" : "ti-bell"} text-[11px] text-slate-400 hover:text-blue-500`} />
           </button>
+
+          {/* Three-dots menu — hidden for #general */}
+          {!isGeneral && (
+            <div className="relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); setMenuOpen((p) => !p); }}
+                title="More"
+                className="w-4.5 h-4.5 flex items-center justify-center bg-transparent border-none cursor-pointer rounded p-0"
+              >
+                <i className="ti ti-dots text-[11px] text-slate-400 hover:text-slate-600" />
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-5 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[130px] overflow-hidden">
+                  <button
+                    onClick={handleLeave}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors text-left font-inherit"
+                  >
+                    <i className="ti ti-door-exit text-[13px]" />
+                    Leave channel
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -382,7 +421,7 @@ function DMItem({ dm, active, onClick }) {
 // ── Main sidebar ──────────────────────────────────────────────────────────────
 export default function ChannelSidebar() {
   const { user } = useAuth();
-  const { activeWorkspace, channels, activeChannel, selectChannel } = useWorkspace();
+  const { activeWorkspace, channels, activeChannel, selectChannel,myRole  } = useWorkspace();
   const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread } = useDM();
 
   const [collapsed, setCollapsed] = useState({});
@@ -450,6 +489,7 @@ export default function ChannelSidebar() {
           </button>
 
           <div className="flex gap-1 flex-shrink-0 ml-2">
+            {["owner", "admin"].includes(myRole) && (
             <button
               onClick={() => setShowCC(true)}
               title="New Channel"
@@ -457,6 +497,7 @@ export default function ChannelSidebar() {
             >
               <i className="ti ti-plus" />
             </button>
+          )}
           </div>
 
           {dropdownOpen && (
@@ -516,11 +557,11 @@ export default function ChannelSidebar() {
           {/* Channels */}
           <div className="mb-1">
             <SectionHeader
-              title="Channels"
-              collapsed={collapsed.channels}
-              onToggle={() => toggle("channels")}
-              onAdd={() => setShowCC(true)}
-            />
+            title="Channels"
+            collapsed={collapsed.channels}
+            onToggle={() => toggle("channels")}
+            onAdd={["owner", "admin"].includes(myRole) ? () => setShowCC(true) : undefined}
+          />
             {!collapsed.channels &&
               filtered.map((ch) => (
                 <ChannelItem

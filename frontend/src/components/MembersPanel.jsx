@@ -70,7 +70,7 @@ function MemberRow({ member, onOpenDM, onViewProfile }) {
 }
 
 export default function MembersPanel({ open, onClose, onOpenDM }) {
-  const { activeWorkspace, activeChannel } = useWorkspace();
+  const { activeWorkspace, activeChannel, myRole } = useWorkspace();  // add myRole
   const { user: me } = useAuth();
 
   const [members, setMembers]           = useState([]);
@@ -159,19 +159,19 @@ export default function MembersPanel({ open, onClose, onOpenDM }) {
 
         {/* Tabs */}
         <div className="flex border-b border-slate-100 flex-shrink-0">
-          {["members", "add"].map((t) => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setSearchQ(""); setProfileUser(null); }}
-              className={`flex-1 py-2.5 text-[12px] font-medium cursor-pointer bg-transparent border-none border-b-2 transition-all capitalize ${
-                tab === t
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-slate-400 hover:text-slate-600"
-              }`}
-            >
-              {t === "members" ? `Members (${members.length})` : "Add People"}
-            </button>
-          ))}
+          {["members", ...( ["owner", "admin"].includes(myRole) ? ["add"] : []) ].map((t) => (
+          <button
+            key={t}
+            onClick={() => { setTab(t); setSearchQ(""); setProfileUser(null); }}
+            className={`flex-1 py-2.5 text-[12px] font-medium cursor-pointer bg-transparent border-none border-b-2 transition-all capitalize ${
+              tab === t
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-slate-400 hover:text-slate-600"
+            }`}
+          >
+            {t === "members" ? `Members (${members.length})` : "Add People"}
+          </button>
+        ))}
         </div>
 
         {/* ── Members tab ── */}

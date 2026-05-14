@@ -11,7 +11,7 @@ import {
   markChannelRead,
 } from "../controllers/channelController.js";
 import { protect } from "../middlewares/authMiddleware.js";
-import { requireWorkspaceMember } from "../middlewares/workspaceMiddleware.js";
+import { requireWorkspaceMember, requireWorkspaceRole } from "../middlewares/workspaceMiddleware.js";
 
 // mergeParams lets us read :workspaceId from the parent workspace router
 const router = Router({ mergeParams: true });
@@ -21,7 +21,7 @@ router.use(requireWorkspaceMember);   // every channel route needs workspace mem
 
 // ── Collection  /api/workspaces/:workspaceId/channels ────────────────────────
 router.get ("/", getChannels);
-router.post("/", createChannel);
+router.post("/", requireWorkspaceRole("admin"), createChannel);
 
 // ── Single channel ────────────────────────────────────────────────────────────
 router.get   ("/:channelId",         getChannel);

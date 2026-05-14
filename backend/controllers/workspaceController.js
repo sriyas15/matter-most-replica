@@ -54,10 +54,19 @@ export const getMyWorkspaces = async (req, res) => {
       "members.user": userId,
       isArchived: false,
     })
-      .select("name slug logo themeColor description memberCount owner")
+      .select("name slug logo themeColor description memberCount owner members")
       .lean();
 
-    res.json({ success: true, data: workspaces });
+    const enriched = workspaces.map((ws) => {
+      const member = ws.members.find((m) => m.user.toString() === userId.toString());
+      const { members, ...rest } = ws;  // destructure to strip members
+      return {
+        ...rest,
+        myRole: member?.role ?? "member",
+      };
+    });
+
+    res.json({ success: true, data: enriched });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
