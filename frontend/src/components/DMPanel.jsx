@@ -237,37 +237,18 @@ export default function DMPanel() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
+  const handleFileChange = (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  e.target.value = "";
 
-    if (file.size > MAX_FILE_SIZE_BYTES) { alert(`File exceeds the ${MAX_FILE_SIZE_MB} MB limit.`); return; }
-    if (!ACCEPTED_TYPES.includes(file.type)) { alert("Unsupported file type."); return; }
+  if (file.size > MAX_FILE_SIZE_BYTES) { alert(`File exceeds the ${MAX_FILE_SIZE_MB} MB limit.`); return; }
+  if (!ACCEPTED_TYPES.includes(file.type)) { alert("Unsupported file type."); return; }
 
-    const previewUrl = URL.createObjectURL(file);
-    setPendingFile({ file, name: file.name, size: file.size, type: file.type, category: getFileCategory(file.type), previewUrl });
-    setUploadedFileId(null);
-
-    if (!activeWorkspace?._id) return;
-    setUploading(true);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      const { data } = await api.post(
-        `/workspaces/${activeWorkspace._id}/files`,
-        form,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-      setUploadedFileId(data.data._id);
-    } catch (err) {
-      console.error("File upload failed:", err);
-      alert("File upload failed. Please try again.");
-      clearFile();
-    } finally {
-      setUploading(false);
-    }
-  };
+  const previewUrl = URL.createObjectURL(file);
+  setPendingFile({ file, name: file.name, size: file.size, type: file.type, category: getFileCategory(file.type), previewUrl });
+  setUploadedFileId(null);
+};
 
   // ── Emoji ───────────────────────────────────────────────────────────────────
 
@@ -286,18 +267,44 @@ export default function DMPanel() {
 
   // ── Send ────────────────────────────────────────────────────────────────────
 
-  const handleSend = async () => {
-    const trimmed = text.trim();
-    if ((!trimmed && !uploadedFileId) || sending || uploading) return;
-    setSending(true);
-    try {
-      await sendDMMessage(trimmed, uploadedFileId ? [uploadedFileId] : []);
-      setText("");
-      clearFile();
-      inputRef.current?.focus();
-    } catch {}
-    finally { setSending(false); }
-  };
+const handleSend = async () => {
+  const trimmed = text.trim();
+  if ((!trimmed && !pendingFile) || sending || uploading) return;
+  setSending(true);
+  try {
+    let fileId = uploadedFileId;
+
+    // Upload now, on Send, if a file is staged but not yet uploaded
+    if (pendingFile && !fileId) {
+      if (!activeWorkspace?._id) { alert("No active workspace."); return; }
+      setUploading(true);
+      try {
+        const form = new FormData();
+        form.append("file", pendingFile.file);
+        const { data } = await api.post(
+          `/workspaces/${activeWorkspace._id}/files`,
+          form,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+        fileId = data.data._id;
+        setUploadedFileId(fileId);
+      } catch (err) {
+        console.error("File upload failed:", err);
+        alert("File upload failed. Please try again.");
+        return;
+      } finally {
+        setUploading(false);
+      }
+    }
+
+    await sendDMMessage(trimmed, fileId ? [fileId] : []);
+    setText("");
+    clearFile();
+    inputRef.current?.focus();
+  } catch {}
+  finally { setSending(false); }
+};
+
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
@@ -329,7 +336,7 @@ export default function DMPanel() {
     items.push({ type: "message", key: msg._id, msg, isMine, isConsecutive });
   }
 
-  const canSend = (text.trim() || uploadedFileId) && !sending && !uploading;
+const canSend = (text.trim() || pendingFile) && !sending && !uploading;
 
   return (
     <>
