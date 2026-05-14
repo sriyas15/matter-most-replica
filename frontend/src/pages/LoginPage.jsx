@@ -82,11 +82,11 @@ export default function LoginPage() {
               className="relative w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
             />
 
-            <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" 
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" 
               onClick={()=>setCanSee(!canSee)}>
               {canSee ? <FaEye className="cursor-pointer" size={16}/>
               : <FaEyeSlash className="cursor-pointer" size={16}/>}
-            </button>
+            </div>
             </div>
 
           </div>
