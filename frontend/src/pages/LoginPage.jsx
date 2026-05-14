@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
+import { FaEye,FaEyeSlash } from "react-icons/fa";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ canSee, setCanSee ] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -73,11 +75,20 @@ export default function LoginPage() {
           </div>
           <div>
             <label className="block text-xs mb-1.5 font-medium text-black">Password</label>
-            <input
-              type="password" name="password" placeholder="••••••••"
+            <div className="relative">
+              <input
+              type={canSee ? "text" : "password"} name="password" placeholder="••••••••"
               value={form.password} onChange={handleChange} required
-              className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+              className="relative w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2.5 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
             />
+
+            <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" 
+              onClick={()=>setCanSee(!canSee)}>
+              {canSee ? <FaEye className="cursor-pointer" size={16}/>
+              : <FaEyeSlash className="cursor-pointer" size={16}/>}
+            </button>
+            </div>
+
           </div>
 
           <button

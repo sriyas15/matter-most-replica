@@ -2,16 +2,18 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function SignupPage() {
-  const { register }   = useAuth();
-  const navigate       = useNavigate();
+  const { register } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const inviteToken    = searchParams.get("invite") || sessionStorage.getItem("pendingInviteToken");
+  const inviteToken = searchParams.get("invite") || sessionStorage.getItem("pendingInviteToken");
 
-  const [form, setForm]       = useState({ username: "", email: "", password: "", displayName: "" });
-  const [error, setError]     = useState("");
+  const [form, setForm] = useState({ username: "", email: "", password: "", displayName: "" });
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [ canSee, setCanSee ] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -22,7 +24,7 @@ export default function SignupPage() {
     try {
       await register(form);
       if (inviteToken) {
-        try { await api.post(`/workspaces/join/${inviteToken}`); } catch {}
+        try { await api.post(`/workspaces/join/${inviteToken}`); } catch { }
         sessionStorage.removeItem("pendingInviteToken");
       }
       navigate("/");
@@ -34,10 +36,9 @@ export default function SignupPage() {
   };
 
   const fields = [
-    { name: "displayName", label: "Full Name",  type: "text",     placeholder: "Jane Doe"        },
-    { name: "username",    label: "Username",   type: "text",     placeholder: "janedoe"         },
-    { name: "email",       label: "Email",      type: "email",    placeholder: "jane@company.com"},
-    { name: "password",    label: "Password",   type: "password", placeholder: "Min 8 characters"},
+    { name: "displayName", label: "Full Name", type: "text", placeholder: "Jane Doe" },
+    { name: "username", label: "Username", type: "text", placeholder: "janedoe" },
+    { name: "email", label: "Email", type: "email", placeholder: "jane@company.com" },
   ];
 
   return (
@@ -80,6 +81,24 @@ export default function SignupPage() {
               />
             </div>
           ))}
+
+           <div>
+            <label className="block text-xs mb-1.5 font-medium text-slate-500">Password</label>
+            <div className="relative">
+              <input
+                type={canSee ? "text" : "password"} name="password" placeholder="Min 8 characters"
+                value={form.password} onChange={handleChange} required
+                className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg px-3 py-2.5 pr-10 text-sm outline-none placeholder-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+              />
+              <button
+                type="button"
+                onClick={() => setCanSee(!canSee)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {canSee ? <FaEye size={16} /> : <FaEyeSlash size={16} />}
+              </button>
+            </div>
+          </div>
 
           <button
             type="submit" disabled={loading}
