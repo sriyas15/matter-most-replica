@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://matter-most-replica.onrender.com/api",
+  baseURL: import.meta.env.VITE_API_URL || "https://matter-most-replica.onrender.com/api",//http://localhost:4000
   withCredentials: true,
 });
 
@@ -25,7 +25,12 @@ api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const original = err.config;
-    if (err.response?.status === 401 && !original._retry) {
+
+    const isAuthRoute =
+      original.url.includes("/auth/login") ||
+      original.url.includes("/auth/register");
+
+    if (err.response?.status === 401 && !original._retry && !isAuthRoute) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           queue.push({ resolve, reject });
@@ -34,19 +39,24 @@ api.interceptors.response.use(
           return api(original);
         });
       }
+
       original._retry = true;
       isRefreshing = true;
+
       try {
         const { data } = await axios.post(
           `${import.meta.env.VITE_API_URL || "https://matter-most-replica.onrender.com/api"}/auth/refresh`,
           {},
           { withCredentials: true }
         );
+
         const newToken = data.accessToken;
         localStorage.setItem("accessToken", newToken);
         processQueue(null, newToken);
+
         original.headers.Authorization = `Bearer ${newToken}`;
         return api(original);
+
       } catch (refreshErr) {
         processQueue(refreshErr, null);
         localStorage.removeItem("accessToken");
@@ -56,8 +66,10 @@ api.interceptors.response.use(
         isRefreshing = false;
       }
     }
+
     return Promise.reject(err);
   }
 );
+
 
 export default api;
