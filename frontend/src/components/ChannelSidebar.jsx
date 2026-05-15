@@ -18,7 +18,7 @@ const STATUS_COLOR = {
 
 // ── Workspace Settings Modal ──────────────────────────────────────────────────
 function WorkspaceSettingsModal({ onClose }) {
-const { activeWorkspace, selectWorkspace } = useWorkspace();
+  const { activeWorkspace, selectWorkspace } = useWorkspace();
   const [form, setForm] = useState({
     name: activeWorkspace?.name || "",
     description: activeWorkspace?.description || "",
@@ -27,10 +27,14 @@ const { activeWorkspace, selectWorkspace } = useWorkspace();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const flash = (msg) => { setSuccess(msg); setTimeout(() => setSuccess(""), 2500); };
+  const flash = (msg) => {
+    setSuccess(msg);
+    setTimeout(() => setSuccess(""), 2500);
+  };
 
   const handleSave = async () => {
-    setError(""); setLoading(true);
+    setError("");
+    setLoading(true);
     try {
       const { data } = await api.patch(`/workspaces/${activeWorkspace._id}`, {
         name: form.name,
@@ -40,24 +44,39 @@ const { activeWorkspace, selectWorkspace } = useWorkspace();
       flash("Workspace updated");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300]" onClick={onClose}>
-      <div className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300]"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl w-full max-w-md p-6 shadow-xl border border-slate-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-5">
           <span className="text-[15px] font-semibold text-slate-800">Team Settings</span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors">
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors"
+          >
             <i className="ti ti-x" />
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-xs mb-4">{error}</div>
+          <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-xs mb-4">
+            {error}
+          </div>
         )}
         {success && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg px-3 py-2 text-xs mb-4">✓ {success}</div>
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-lg px-3 py-2 text-xs mb-4">
+            ✓ {success}
+          </div>
         )}
 
         <div className="flex items-center gap-3 mb-5">
@@ -65,9 +84,11 @@ const { activeWorkspace, selectWorkspace } = useWorkspace();
             className="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold text-white overflow-hidden"
             style={{ background: activeWorkspace?.themeColor || "#2563eb" }}
           >
-            {activeWorkspace?.logo
-              ? <img src={activeWorkspace.logo} alt="" className="w-full h-full object-cover" />
-              : (activeWorkspace?.name || "W").slice(0, 2).toUpperCase()}
+            {activeWorkspace?.logo ? (
+              <img src={activeWorkspace.logo} alt="" className="w-full h-full object-cover" />
+            ) : (
+              (activeWorkspace?.name || "W").slice(0, 2).toUpperCase()
+            )}
           </div>
           <div>
             <div className="text-sm font-semibold text-slate-800">{activeWorkspace?.name}</div>
@@ -100,7 +121,10 @@ const { activeWorkspace, selectWorkspace } = useWorkspace();
         </div>
 
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium"
+          >
             Cancel
           </button>
           <button
@@ -123,7 +147,8 @@ function LeaveWorkspaceModal({ onClose }) {
   const [error, setError] = useState("");
 
   const handleLeave = async () => {
-    setLoading(true); setError("");
+    setLoading(true);
+    setError("");
     try {
       await api.delete(`/workspaces/${activeWorkspace._id}/leave`);
       const remaining = workspaces.filter((w) => w._id !== activeWorkspace._id);
@@ -136,17 +161,28 @@ function LeaveWorkspaceModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300]" onClick={onClose}>
-      <div className="bg-white rounded-xl w-full max-w-sm p-6 shadow-xl border border-slate-200" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300]"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl w-full max-w-sm p-6 shadow-xl border border-slate-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-5">
           <span className="text-[15px] font-semibold text-slate-800">Leave Team</span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors">
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors"
+          >
             <i className="ti ti-x" />
           </button>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-xs mb-4">{error}</div>
+          <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-xs mb-4">
+            {error}
+          </div>
         )}
 
         <div className="flex flex-col items-center gap-3 py-4 pb-5">
@@ -162,7 +198,10 @@ function LeaveWorkspaceModal({ onClose }) {
         </div>
 
         <div className="flex gap-2 justify-end">
-          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium"
+          >
             Cancel
           </button>
           <button
@@ -183,18 +222,20 @@ function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLea
   const ref = useRef(null);
 
   useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const h = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [onClose]);
 
   const items = [
-    { icon: "ti-users",      label: "Members",      action: onMembers,    danger: false },
-    { icon: "ti-plus",       label: "Create Team",  action: onCreateTeam, danger: false },
+    { icon: "ti-users", label: "Members", action: onMembers, danger: false },
+    { icon: "ti-plus", label: "Create Team", action: onCreateTeam, danger: false },
     { divider: true },
-    { icon: "ti-settings",   label: "Team Settings",action: onSettings,   danger: false },
+    { icon: "ti-settings", label: "Team Settings", action: onSettings, danger: false },
     { divider: true },
-    { icon: "ti-door-exit",  label: "Leave Team",   action: onLeave,      danger: true  },
+    { icon: "ti-door-exit", label: "Leave Team", action: onLeave, danger: true },
   ];
 
   return (
@@ -208,7 +249,10 @@ function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLea
         ) : (
           <button
             key={i}
-            onClick={() => { item.action(); onClose(); }}
+            onClick={() => {
+              item.action();
+              onClose();
+            }}
             className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium bg-transparent border-none cursor-pointer text-left transition-colors hover:bg-slate-50 ${
               item.danger ? "text-red-500" : "text-slate-600"
             }`}
@@ -249,16 +293,19 @@ function SectionHeader({ title, collapsed, onToggle, onAdd }) {
 function ChannelItem({ channel, active, onClick, unread }) {
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { activeWorkspace, updateChannel } = useWorkspace();
+  const { activeWorkspace, updateChannel, selectChannel } = useWorkspace();
 
   const isGeneral = channel.name === "general";
+  // ⚠️  Bug fix #2: show action buttons when active OR hovered (not only hovered)
+  const showActions = hovered || active;
 
   const handleFavorite = async (e) => {
     e.stopPropagation();
     try {
-      await api.patch(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`, {
-        isFavorited: !channel.isFavorited,
-      });
+      await api.patch(
+        `/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`,
+        { isFavorited: !channel.isFavorited }
+      );
       updateChannel({ ...channel, isFavorited: !channel.isFavorited });
     } catch {}
   };
@@ -266,21 +313,32 @@ function ChannelItem({ channel, active, onClick, unread }) {
   const handleMute = async (e) => {
     e.stopPropagation();
     try {
-      await api.patch(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`, {
-        isMuted: !channel.isMuted,
-      });
+      await api.patch(
+        `/workspaces/${activeWorkspace._id}/channels/${channel._id}/me`,
+        { isMuted: !channel.isMuted }
+      );
       updateChannel({ ...channel, isMuted: !channel.isMuted });
     } catch {}
   };
 
+  // ⚠️  Bug fix #4: use _remove flag so the channel disappears from the list
+  //     immediately after leaving, and deselect if it was the active channel.
   const handleLeave = async (e) => {
     e.stopPropagation();
     setMenuOpen(false);
     try {
-      await api.delete(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/leave`);
-      // Remove from local list
-      updateChannel({ ...channel, isMember: false });
-      // Optionally refetch channels — depends on your UX preference
+      await api.delete(
+        `/workspaces/${activeWorkspace._id}/channels/${channel._id}/leave`
+      );
+      // For private channels — remove entirely from sidebar
+      // For public channels — keep in list but mark as non-member
+      if (channel.type === "private") {
+        updateChannel({ _id: channel._id, _remove: true });
+      } else {
+        updateChannel({ ...channel, isMember: false });
+        // Deselect so ChatArea shows the join gate
+        if (active) selectChannel({ ...channel, isMember: false });
+      }
     } catch {}
   };
 
@@ -288,7 +346,10 @@ function ChannelItem({ channel, active, onClick, unread }) {
     <div
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
+      onMouseLeave={() => {
+        setHovered(false);
+        setMenuOpen(false);
+      }}
       className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors relative ${
         active ? "bg-blue-50" : "hover:bg-slate-50"
       }`}
@@ -308,7 +369,8 @@ function ChannelItem({ channel, active, onClick, unread }) {
         {channel.displayName || channel.name}
       </span>
 
-      {hovered && !active && (
+      {/* ⚠️  Bug fix #2: show on active OR hovered */}
+      {showActions && (
         <div className="flex gap-0.5 ml-auto" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={handleFavorite}
@@ -326,14 +388,21 @@ function ChannelItem({ channel, active, onClick, unread }) {
             title={channel.isMuted ? "Unmute" : "Mute"}
             className="w-4.5 h-4.5 flex items-center justify-center bg-transparent border-none cursor-pointer rounded p-0"
           >
-            <i className={`ti ${channel.isMuted ? "ti-bell-off" : "ti-bell"} text-[11px] text-slate-400 hover:text-blue-500`} />
+            <i
+              className={`ti ${
+                channel.isMuted ? "ti-bell-off" : "ti-bell"
+              } text-[11px] text-slate-400 hover:text-blue-500`}
+            />
           </button>
 
           {/* Three-dots menu — hidden for #general */}
           {!isGeneral && (
             <div className="relative">
               <button
-                onClick={(e) => { e.stopPropagation(); setMenuOpen((p) => !p); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen((p) => !p);
+                }}
                 title="More"
                 className="w-4.5 h-4.5 flex items-center justify-center bg-transparent border-none cursor-pointer rounded p-0"
               >
@@ -342,13 +411,16 @@ function ChannelItem({ channel, active, onClick, unread }) {
 
               {menuOpen && (
                 <div className="absolute right-0 top-5 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[130px] overflow-hidden">
-                  <button
-                    onClick={handleLeave}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors text-left font-inherit"
-                  >
-                    <i className="ti ti-door-exit text-[13px]" />
-                    Leave channel
-                  </button>
+                  {/* Only show Leave for channels where the user is a member */}
+                  {channel.isMember !== false && (
+                    <button
+                      onClick={handleLeave}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors text-left font-inherit"
+                    >
+                      <i className="ti ti-door-exit text-[13px]" />
+                      Leave channel
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -356,7 +428,8 @@ function ChannelItem({ channel, active, onClick, unread }) {
         </div>
       )}
 
-      {!hovered && unread > 0 && (
+      {/* Unread badge — only show when actions are hidden */}
+      {!showActions && unread > 0 && (
         <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">
           {unread > 99 ? "99+" : unread}
         </span>
@@ -374,7 +447,12 @@ function DMItem({ dm, active, onClick }) {
     dm.participants?.find((p) => (p.user?._id || p.user) !== me?._id)?.user || {};
 
   const name = other.displayName || other.username || "Unknown";
-  const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const initials = name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
   const unread = dmUnread[dm._id] || 0;
   const statusClass = STATUS_COLOR[other.status || "offline"];
 
@@ -421,7 +499,8 @@ function DMItem({ dm, active, onClick }) {
 // ── Main sidebar ──────────────────────────────────────────────────────────────
 export default function ChannelSidebar() {
   const { user } = useAuth();
-  const { activeWorkspace, channels, activeChannel, selectChannel,myRole  } = useWorkspace();
+  const { activeWorkspace, channels, activeChannel, selectChannel, myRole } =
+    useWorkspace();
   const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread } = useDM();
 
   const [collapsed, setCollapsed] = useState({});
@@ -450,17 +529,28 @@ export default function ChannelSidebar() {
     };
     socket.on("new:message", onNew);
     socket.on("message:new", onNew);
-    return () => { socket.off("new:message", onNew); socket.off("message:new", onNew); };
+    return () => {
+      socket.off("new:message", onNew);
+      socket.off("message:new", onNew);
+    };
   }, [activeChannel?._id, dms]);
 
   const handleSelectChannel = (ch) => {
     selectChannel(ch);
     setUnreadMap((p) => ({ ...p, [ch._id]: 0 }));
     if (activeWorkspace)
-      api.patch(`/workspaces/${activeWorkspace._id}/channels/${ch._id}/read`).catch(() => {});
+      api
+        .patch(`/workspaces/${activeWorkspace._id}/channels/${ch._id}/read`)
+        .catch(() => {});
   };
 
-  const publicChannels = channels.filter((c) => ["public", "private"].includes(c.type));
+  // ⚠️  Bug fix #5 (sidebar part): hide private channels the user isn't a member of
+  const publicChannels = channels.filter(
+    (c) =>
+      (c.type === "public" || (c.type === "private" && c.isMember)) &&
+      c.type !== "direct" &&
+      c.type !== "group"
+  );
   const favoriteChannels = channels.filter((c) => c.isFavorited);
   const filtered = search.trim()
     ? publicChannels.filter((c) =>
@@ -471,7 +561,6 @@ export default function ChannelSidebar() {
   return (
     <>
       <div className="w-[240px] bg-white flex flex-col border-r border-slate-200 h-screen flex-shrink-0">
-
         {/* ── Header ── */}
         <div className="px-3.5 py-3 flex items-center justify-between border-b border-slate-100 relative">
           <button
@@ -490,14 +579,14 @@ export default function ChannelSidebar() {
 
           <div className="flex gap-1 flex-shrink-0 ml-2">
             {["owner", "admin"].includes(myRole) && (
-            <button
-              onClick={() => setShowCC(true)}
-              title="New Channel"
-              className="w-7 h-7 rounded-md flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 text-[15px] border-none bg-transparent cursor-pointer transition-colors"
-            >
-              <i className="ti ti-plus" />
-            </button>
-          )}
+              <button
+                onClick={() => setShowCC(true)}
+                title="New Channel"
+                className="w-7 h-7 rounded-md flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 text-[15px] border-none bg-transparent cursor-pointer transition-colors"
+              >
+                <i className="ti ti-plus" />
+              </button>
+            )}
           </div>
 
           {dropdownOpen && (
@@ -532,7 +621,6 @@ export default function ChannelSidebar() {
 
         {/* ── Nav ── */}
         <div className="flex-1 overflow-y-auto py-1">
-
           {/* Favorites */}
           {favoriteChannels.length > 0 && (
             <div className="mb-1">
@@ -557,11 +645,13 @@ export default function ChannelSidebar() {
           {/* Channels */}
           <div className="mb-1">
             <SectionHeader
-            title="Channels"
-            collapsed={collapsed.channels}
-            onToggle={() => toggle("channels")}
-            onAdd={["owner", "admin"].includes(myRole) ? () => setShowCC(true) : undefined}
-          />
+              title="Channels"
+              collapsed={collapsed.channels}
+              onToggle={() => toggle("channels")}
+              onAdd={
+                ["owner", "admin"].includes(myRole) ? () => setShowCC(true) : undefined
+              }
+            />
             {!collapsed.channels &&
               filtered.map((ch) => (
                 <ChannelItem
@@ -580,7 +670,11 @@ export default function ChannelSidebar() {
           {/* Direct Messages */}
           <div className="mb-1">
             <SectionHeader
-              title={totalDMUnread > 0 ? `Direct Messages · ${totalDMUnread}` : "Direct Messages"}
+              title={
+                totalDMUnread > 0
+                  ? `Direct Messages · ${totalDMUnread}`
+                  : "Direct Messages"
+              }
               collapsed={collapsed.dms}
               onToggle={() => toggle("dms")}
               onAdd={() => setShowDM(true)}
@@ -612,8 +706,12 @@ export default function ChannelSidebar() {
       {/* ── Modals ── */}
       {showCreateChannel && <CreateChannelModal open onClose={() => setShowCC(false)} />}
       {showNewDM && <NewDMModal open onClose={() => setShowDM(false)} />}
-      {showCreateTeam && <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />}
-      {showSettings && <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />}
+      {showCreateTeam && (
+        <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />
+      )}
+      {showSettings && (
+        <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />
+      )}
       {showLeave && <LeaveWorkspaceModal onClose={() => setShowLeave(false)} />}
       {showMembers && (
         <MembersPanel
