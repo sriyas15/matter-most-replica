@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useWorkspace } from "../context/WorkspaceContext";
 import api from "../lib/api";
 
@@ -35,12 +35,8 @@ function ChannelInfoPanel({ channel, workspace, onClose }) {
 
   return (
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 z-[49]" onClick={onClose} />
-
-      {/* Panel */}
       <div className="fixed top-[50px] right-0 bottom-0 w-[300px] z-50 bg-white border-l border-slate-200 flex flex-col shadow-xl overflow-y-auto">
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 flex-shrink-0">
           <span className="text-[13px] font-semibold text-slate-800">Channel Info</span>
           <button
@@ -57,14 +53,9 @@ function ChannelInfoPanel({ channel, workspace, onClose }) {
           </div>
         ) : (
           <div className="p-4 flex flex-col gap-5">
-            {/* Channel name + type */}
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-lg text-blue-600 flex-shrink-0">
-                <i
-                  className={`ti ${
-                    info?.type === "private" ? "ti-lock" : "ti-hash"
-                  }`}
-                />
+                <i className={`ti ${info?.type === "private" ? "ti-lock" : "ti-hash"}`} />
               </div>
               <div>
                 <div className="text-[15px] font-semibold text-slate-800">
@@ -76,20 +67,16 @@ function ChannelInfoPanel({ channel, workspace, onClose }) {
               </div>
             </div>
 
-            {/* Description */}
             <InfoSection title="Description">
               {info?.description ? (
                 <p className="text-[12px] text-slate-500 leading-relaxed m-0">
                   {info.description}
                 </p>
               ) : (
-                <p className="text-[12px] text-slate-400 italic m-0">
-                  No description set.
-                </p>
+                <p className="text-[12px] text-slate-400 italic m-0">No description set.</p>
               )}
             </InfoSection>
 
-            {/* Stats */}
             <InfoSection title="Details">
               <div className="flex flex-col gap-2.5">
                 <InfoRow
@@ -105,8 +92,8 @@ function ChannelInfoPanel({ channel, workspace, onClose }) {
                     icon="ti-user"
                     label="Created by"
                     value={
-                      info.members?.find((m) => m.role === "admin")?.user
-                        ?.displayName || "Unknown"
+                      info.members?.find((m) => m.role === "admin")?.user?.displayName ||
+                      "Unknown"
                     }
                   />
                 )}
@@ -116,12 +103,9 @@ function ChannelInfoPanel({ channel, workspace, onClose }) {
               </div>
             </InfoSection>
 
-            {/* Topic */}
             {info?.topic && (
               <InfoSection title="Topic">
-                <p className="text-[12px] text-slate-500 leading-relaxed m-0">
-                  {info.topic}
-                </p>
+                <p className="text-[12px] text-slate-500 leading-relaxed m-0">{info.topic}</p>
               </InfoSection>
             )}
           </div>
@@ -148,9 +132,7 @@ function InfoRow({ icon, label, value, accent }) {
       <i className={`ti ${icon} text-[13px] text-slate-400 w-4 text-center`} />
       <span className="text-[12px] text-slate-500 flex-1">{label}</span>
       <span
-        className={`text-[12px] font-medium ${
-          accent ? "text-amber-500" : "text-slate-700"
-        }`}
+        className={`text-[12px] font-medium ${accent ? "text-amber-500" : "text-slate-700"}`}
       >
         {String(value)}
       </span>
@@ -158,9 +140,54 @@ function InfoRow({ icon, label, value, accent }) {
   );
 }
 
+// ── useLiveMemberCount ────────────────────────────────────────────────────────
+// Single source of truth for the member count badge.
+// - Fetches from the detail endpoint once per channel (not every render).
+// - Returns a stable `refreshCount` callback so any child (MembersPanel,
+//   JoinChannelGate) can trigger a re-fetch after a membership change.
+// - While the fetch is in flight, returns `null` so the caller can show a
+//   spinner instead of a stale number.
+function useLiveMemberCount(workspace, channel, snapshotFallback) {
+  const [liveCount, setLiveCount] = useState(null);
+  const fetchedForRef = useRef(null); // track which channelId we've fetched for
+
+  const refresh = useCallback(async () => {
+    if (!workspace?._id || !channel?._id) return;
+    try {
+      const { data } = await api.get(
+        `/workspaces/${workspace._id}/channels/${channel._id}`
+      );
+      const count =
+        data.data?.members?.length ?? data.data?.memberCount ?? null;
+      setLiveCount(count);
+    } catch {
+      // silently fail — snapshotFallback is still shown
+    }
+  }, [workspace?._id, channel?._id]);
+
+  // Fetch once when the channel changes
+  useEffect(() => {
+    if (!channel?._id) return;
+    if (fetchedForRef.current === channel._id) return; // already fetched
+    fetchedForRef.current = channel._id;
+    setLiveCount(null); // reset while loading so we show spinner briefly
+    refresh();
+  }, [channel?._id, refresh]);
+
+  // While loading show null; after fetch show live; never trust stale snapshot
+  // for the badge (only use snapshot as fallback if fetch never completes)
+  const displayCount = liveCount ?? snapshotFallback;
+
+  return [displayCount, liveCount === null, refresh];
+  //                     ^^^^^^^^^^^^^^^^^ isLoading flag
+}
+
 // ── Main ChatHeader ───────────────────────────────────────────────────────────
-// ⚠️  Bug fix #3: accepts `isMember` prop so the Members button is only shown
-//     when the user actually belongs to the channel.
+// Props:
+//   onOpenMembers(refreshCountFn) — called when the user clicks the members
+//     badge; passes down the refreshCount callback so MembersPanel can call
+//     it after a join/leave to update the badge without a full page refresh.
+//   isMember — hides member-only UI (search, members badge) for non-members.
 export default function ChatHeader({ onOpenMembers, isMember = true }) {
   const { activeWorkspace, activeChannel } = useWorkspace();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -169,6 +196,22 @@ export default function ChatHeader({ onOpenMembers, isMember = true }) {
   const [infoOpen, setInfoOpen] = useState(false);
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
+
+  // Stale snapshot from the list endpoint — used only as fallback
+  const snapshotCount =
+    activeChannel?.memberCount ?? activeChannel?.members?.length ?? 0;
+
+  const [displayCount, isCountLoading, refreshCount] = useLiveMemberCount(
+    activeWorkspace,
+    activeChannel,
+    snapshotCount
+  );
+
+  // Wrap the parent's onOpenMembers to pass refreshCount down so the panel
+  // can call it after membership mutations (join / leave / add member).
+  const handleOpenMembers = useCallback(() => {
+    onOpenMembers(refreshCount);
+  }, [onOpenMembers, refreshCount]);
 
   useEffect(() => {
     const h = (e) => {
@@ -201,14 +244,6 @@ export default function ChatHeader({ onOpenMembers, isMember = true }) {
   }, [query, activeWorkspace?._id, activeChannel?._id]);
 
   const channelName = activeChannel?.displayName || activeChannel?.name || "";
-
-  // ⚠️  Bug fix #3: memberCount — the enriched list endpoint strips the members
-  //     array, so `memberCount` may be undefined. Fall back through all options.
-  const memberCount =
-    activeChannel?.memberCount ??
-    activeChannel?.members?.length ??
-    0;
-
   const isPrivate = activeChannel?.type === "private";
 
   return (
@@ -218,30 +253,29 @@ export default function ChatHeader({ onOpenMembers, isMember = true }) {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-[14px] font-semibold text-slate-800">
             <i
-              className={`ti ${
-                isPrivate ? "ti-lock" : "ti-hash"
-              } text-[14px] text-slate-400`}
+              className={`ti ${isPrivate ? "ti-lock" : "ti-hash"} text-[14px] text-slate-400`}
             />
             <span>{channelName}</span>
           </div>
 
-          {/* ⚠️  Bug fix #3: only show members button when isMember=true AND
-               memberCount is available. For the list view memberCount comes
-               from the enriched payload; if it's 0 we still show "1+" since
-               the current user is always at least a member. */}
           {isMember && (
             <button
-              onClick={onOpenMembers}
+              onClick={handleOpenMembers}
               title="View members"
-              className="flex items-center gap-1 text-[12px] text-slate-500 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 hover:border-blue-200 rounded-md px-2 py-1 cursor-pointer transition-colors font-inherit"
+              className="flex items-center gap-1 text-[12px] text-slate-500 bg-slate-100 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 hover:border-blue-200 rounded-md px-2 py-1 cursor-pointer transition-colors font-inherit min-w-[48px]"
             >
               <i className="ti ti-users text-[12px]" />
-              <span>{memberCount > 0 ? memberCount : "—"}</span>
+              {isCountLoading ? (
+                // Tiny inline spinner while the first fetch is in-flight
+                <span className="w-2.5 h-2.5 rounded-full border-2 border-slate-300 border-t-blue-500 animate-spin inline-block ml-0.5" />
+              ) : (
+                <span>{displayCount > 0 ? displayCount : "—"}</span>
+              )}
             </button>
           )}
         </div>
 
-        {/* Right — search / pin / info only for members */}
+        {/* Right */}
         <div className="flex gap-1 items-center">
           {isMember && (
             <>
@@ -277,9 +311,7 @@ export default function ChatHeader({ onOpenMembers, isMember = true }) {
                             {msg.sender?.displayName} ·{" "}
                             {new Date(msg.createdAt).toLocaleDateString()}
                           </div>
-                          <div className="text-[12px] text-slate-600 truncate">
-                            {msg.text}
-                          </div>
+                          <div className="text-[12px] text-slate-600 truncate">{msg.text}</div>
                         </div>
                       ))}
                     </div>
@@ -292,7 +324,6 @@ export default function ChatHeader({ onOpenMembers, isMember = true }) {
                   onClick={() => setSearchOpen(true)}
                 />
               )}
-
               <ActionBtn icon="ti-pin" label="Pinned messages" onClick={() => {}} />
             </>
           )}

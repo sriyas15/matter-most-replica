@@ -34,7 +34,9 @@ function MemberAvatar({ user, size = 32 }) {
           ? <img src={user.avatar} alt="" className="w-full h-full object-cover" />
           : initials}
       </div>
-      <div className={`w-2 h-2 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-white ${STATUS_DOT[user.status || "offline"]}`} />
+      <div
+        className={`w-2 h-2 rounded-full absolute -bottom-0.5 -right-0.5 border-2 border-white ${STATUS_DOT[user.status || "offline"]}`}
+      />
     </div>
   );
 }
@@ -69,36 +71,53 @@ function MemberRow({ member, onOpenDM, onViewProfile }) {
   );
 }
 
-export default function MembersPanel({ open, onClose, onOpenDM }) {
-  const { activeWorkspace, activeChannel, myRole } = useWorkspace();  // add myRole
+// ── Main panel ────────────────────────────────────────────────────────────────
+// Props:
+//   onMembersLoaded(count) — called once the real member list has been fetched
+//     so the parent (ChatPage) can trigger a badge refresh in ChatHeader.
+export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded }) {
+  const { activeWorkspace, activeChannel, myRole } = useWorkspace();
   const { user: me } = useAuth();
 
-  const [members, setMembers]           = useState([]);
-  const [searchQ, setSearchQ]           = useState("");
-  const [searchRes, setSearchRes]       = useState([]);
-  const [inviteUrl, setInviteUrl]       = useState("");
+  const [members, setMembers]             = useState([]);
+  const [searchQ, setSearchQ]             = useState("");
+  const [searchRes, setSearchRes]         = useState([]);
+  const [inviteUrl, setInviteUrl]         = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
-  const [copied, setCopied]             = useState(false);
-  const [profileUser, setProfileUser]   = useState(null);
-  const [tab, setTab]                   = useState("members");
-  const debounceRef                     = useRef(null);
+  const [copied, setCopied]               = useState(false);
+  const [profileUser, setProfileUser]     = useState(null);
+  const [tab, setTab]                     = useState("members");
+  const debounceRef                       = useRef(null);
 
+  // Fetch real member list whenever the panel opens or the channel changes.
+  // After fetch we call onMembersLoaded so the header badge can update.
   useEffect(() => {
     if (!open || !activeChannel || !activeWorkspace) return;
-    api.get(`/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}`)
+
+    api
+      .get(`/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}`)
       .then(({ data }) => {
-        const populated = (data.data?.members || []).map((m) => m.user || m).filter(Boolean);
+        const populated = (data.data?.members || [])
+          .map((m) => m.user || m)
+          .filter(Boolean);
         setMembers(populated);
+
+        // ← This is the key line: tell ChatHeader the real count
+        onMembersLoaded?.(populated.length);
       })
       .catch(() => {});
-  }, [open, activeChannel?._id, activeWorkspace?._id]);
+  }, [open, activeChannel?._id, activeWorkspace?._id]); // intentionally omit onMembersLoaded
 
+  // Workspace-wide user search for the "Add People" tab
   useEffect(() => {
     if (!searchQ.trim() || !activeWorkspace) { setSearchRes([]); return; }
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const { data } = await api.get(`/users/workspaces/${activeWorkspace._id}/search`, { params: { q: searchQ } });
+        const { data } = await api.get(
+          `/workspaces/${activeWorkspace._id}/users/search`,
+          { params: { q: searchQ } }
+        );
         setSearchRes(data.data || []);
       } catch {}
     }, 300);
@@ -122,11 +141,12 @@ export default function MembersPanel({ open, onClose, onOpenDM }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleOpenDM = (targetUser) => { onOpenDM(targetUser); onClose(); };
+  const handleOpenDM    = (targetUser) => { onOpenDM(targetUser); onClose(); };
   const handleViewProfile = (targetUser) => setProfileUser(targetUser);
 
   const filtered = members.filter((m) =>
-    !searchQ || (m.displayName || m.username || "").toLowerCase().includes(searchQ.toLowerCase())
+    !searchQ ||
+    (m.displayName || m.username || "").toLowerCase().includes(searchQ.toLowerCase())
   );
 
   if (!open) return null;
@@ -157,21 +177,24 @@ export default function MembersPanel({ open, onClose, onOpenDM }) {
           </button>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — "Add People" only visible to admins/owners */}
         <div className="flex border-b border-slate-100 flex-shrink-0">
-          {["members", ...( ["owner", "admin"].includes(myRole) ? ["add"] : []) ].map((t) => (
-          <button
-            key={t}
-            onClick={() => { setTab(t); setSearchQ(""); setProfileUser(null); }}
-            className={`flex-1 py-2.5 text-[12px] font-medium cursor-pointer bg-transparent border-none border-b-2 transition-all capitalize ${
-              tab === t
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-slate-400 hover:text-slate-600"
-            }`}
-          >
-            {t === "members" ? `Members (${members.length})` : "Add People"}
-          </button>
-        ))}
+          {[
+            "members",
+            ...(["owner", "admin"].includes(myRole) ? ["add"] : []),
+          ].map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTab(t); setSearchQ(""); setProfileUser(null); }}
+              className={`flex-1 py-2.5 text-[12px] font-medium cursor-pointer bg-transparent border-none border-b-2 transition-all capitalize ${
+                tab === t
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-slate-400 hover:text-slate-600"
+              }`}
+            >
+              {t === "members" ? `Members (${members.length})` : "Add People"}
+            </button>
+          ))}
         </div>
 
         {/* ── Members tab ── */}
@@ -194,7 +217,12 @@ export default function MembersPanel({ open, onClose, onOpenDM }) {
                 <p className="text-[12px] text-slate-400 text-center py-5">No members found</p>
               )}
               {filtered.map((m) => (
-                <MemberRow key={m._id} member={m} onOpenDM={handleOpenDM} onViewProfile={handleViewProfile} />
+                <MemberRow
+                  key={m._id}
+                  member={m}
+                  onOpenDM={handleOpenDM}
+                  onViewProfile={handleViewProfile}
+                />
               ))}
             </div>
           </>
@@ -203,7 +231,6 @@ export default function MembersPanel({ open, onClose, onOpenDM }) {
         {/* ── Add People tab ── */}
         {tab === "add" && (
           <div className="flex-1 overflow-y-auto p-4">
-            {/* Search */}
             <div className="mb-5">
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
                 Search by name or username
@@ -224,10 +251,15 @@ export default function MembersPanel({ open, onClose, onOpenDM }) {
                     <p className="text-[12px] text-slate-400 text-center py-3.5">No results</p>
                   )}
                   {searchRes.map((u) => (
-                    <div key={u._id} className="flex items-center gap-2.5 px-3 py-2 border-b border-slate-50 last:border-0">
+                    <div
+                      key={u._id}
+                      className="flex items-center gap-2.5 px-3 py-2 border-b border-slate-50 last:border-0"
+                    >
                       <MemberAvatar user={u} size={28} />
                       <div className="flex-1">
-                        <div className="text-[12px] text-slate-700 font-medium">{u.displayName || u.username}</div>
+                        <div className="text-[12px] text-slate-700 font-medium">
+                          {u.displayName || u.username}
+                        </div>
                         <div className="text-[10px] text-slate-400">@{u.username}</div>
                       </div>
                       <button
@@ -244,7 +276,9 @@ export default function MembersPanel({ open, onClose, onOpenDM }) {
 
             {/* Invite link */}
             <div className="border-t border-slate-100 pt-4">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Invite Link</p>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                Invite Link
+              </p>
               <p className="text-[12px] text-slate-500 mb-3 leading-relaxed">
                 Share this link with people you want to invite to the workspace.
               </p>
@@ -313,13 +347,12 @@ function UserProfilePopup({ user, onClose, onOpenDM, isMe }) {
     <>
       <div className="fixed inset-0 z-[99]" onClick={onClose} />
       <div className="fixed right-[316px] top-1/2 -translate-y-1/2 w-[260px] bg-white border border-slate-200 rounded-xl z-[100] shadow-xl overflow-hidden">
-        {/* Cover */}
         <div
           className="h-[60px]"
-          style={{ background: `linear-gradient(135deg, ${user.avatarColor || "#2563eb"}60, #e0e7ff)` }}
+          style={{
+            background: `linear-gradient(135deg, ${user.avatarColor || "#2563eb"}60, #e0e7ff)`,
+          }}
         />
-
-        {/* Avatar */}
         <div className="px-4 -mt-7 mb-3">
           <div
             className="w-[52px] h-[52px] rounded-xl border-[3px] border-white flex items-center justify-center text-lg font-semibold text-white overflow-hidden"
@@ -332,14 +365,20 @@ function UserProfilePopup({ user, onClose, onOpenDM, isMe }) {
         </div>
 
         <div className="px-4 pb-4">
-          <div className="text-[15px] font-semibold text-slate-800">{user.displayName || user.username}</div>
+          <div className="text-[15px] font-semibold text-slate-800">
+            {user.displayName || user.username}
+          </div>
           <div className="text-[12px] text-slate-400 mb-1.5">@{user.username}</div>
 
           <div className="flex items-center gap-1.5 mb-2.5">
             <div className={`w-[7px] h-[7px] rounded-full ${statusDot}`} />
-            <span className={`text-[11px] capitalize ${statusText}`}>{user.status || "offline"}</span>
+            <span className={`text-[11px] capitalize ${statusText}`}>
+              {user.status || "offline"}
+            </span>
             {user.customStatus?.text && (
-              <span className="text-[11px] text-slate-400">· {user.customStatus.emoji} {user.customStatus.text}</span>
+              <span className="text-[11px] text-slate-400">
+                · {user.customStatus.emoji} {user.customStatus.text}
+              </span>
             )}
           </div>
 

@@ -2,7 +2,7 @@ export function Field({ label, error, children }) {
   return (
     <div style={{ marginBottom: 16 }}>
       {label && (
-        <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#8080a8", marginBottom: 6 }}>
+        <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "black", marginBottom: 6 }}>
           {label}
         </label>
       )}
@@ -31,7 +31,7 @@ export function Input({ value, onChange, placeholder, type = "text", disabled, a
         borderRadius: 8,
         padding: "9px 12px",
         fontSize: 13,
-        color: "#e0e0f0",
+        color: "black",
         outline: "none",
         boxSizing: "border-box",
         fontFamily: "inherit",
@@ -57,7 +57,7 @@ export function Textarea({ value, onChange, placeholder, rows = 3 }) {
         borderRadius: 8,
         padding: "9px 12px",
         fontSize: 13,
-        color: "#e0e0f0",
+        color: "black",
         outline: "none",
         boxSizing: "border-box",
         fontFamily: "inherit",
