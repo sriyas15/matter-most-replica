@@ -37,41 +37,39 @@ export const updateProfile = async (req, res) => {
 // ── PATCH /api/users/me/status ────────────────────────────────────────────────
 export const updateStatus = async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, customStatus } = req.body;
 
     const allowed = ["online", "away", "dnd", "offline"];
     if (!allowed.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status",
-      });
+      return res.status(400).json({ success: false, message: "Invalid status" });
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { status, lastSeenAt: new Date() },
-      { new: true }
-    );
+    const update = { status, lastSeenAt: new Date() };
+
+    // Persist customStatus only if the field is sent and the model supports it.
+    // (If customStatus is commented-out in the User schema, this is a no-op.)
+    if (customStatus !== undefined) {
+      update.customStatus = {
+        emoji: customStatus.emoji ?? "",
+        text:  customStatus.text  ?? "",
+      };
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, update, { new: true });
 
     const io = getIO();
-
-    io.emit("presence:update", {
-      userId: user._id,
-      status: user.status,
+    io.emit("presence:user_status", {
+      userId:       user._id,
+      status:       user.status,
+      customStatus: user.customStatus,
     });
 
-    res.json({
-      success: true,
-      data: { status: user.status },
-    });
-
+    res.json({ success: true, data: { status: user.status, customStatus: user.customStatus } });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
+
 // ── PATCH /api/users/me/password ──────────────────────────────────────────────
 export const changePassword = async (req, res) => {
   try {
@@ -93,29 +91,34 @@ export const changePassword = async (req, res) => {
 };
 
 // ── GET /api/workspaces/:workspaceId/users/search?q= ─────────────────────────
+// ── GET /api/workspaces/:workspaceId/users/search?q= ─────────────────────────
+// q is optional — omitting it (or sending whitespace) lists all workspace members
 export const searchUsers = async (req, res) => {
   try {
     const { workspaceId } = req.params;
-    const { q, limit = 10 } = req.query;
+    const { q, limit = 50 } = req.query;
 
-    if (!q || q.trim().length < 1)
-      return res.status(400).json({ success: false, message: "Query is required" });
-
-    // Fetch workspace member IDs first
     const workspace = await Workspace.findById(workspaceId).select("members");
-    if (!workspace) return res.status(404).json({ success: false, message: "Workspace not found" });
+    if (!workspace)
+      return res.status(404).json({ success: false, message: "Workspace not found" });
 
     const memberIds = workspace.members.map((m) => m.user);
 
-    const users = await User.find({
+    // Build query — if q is blank/whitespace, return all workspace members
+    const trimmed = q?.trim();
+    const filter = {
       _id: { $in: memberIds },
       isDeactivated: false,
-      $or: [
-        { username:    { $regex: q, $options: "i" } },
-        { displayName: { $regex: q, $options: "i" } },
-        { email:       { $regex: q, $options: "i" } },
-      ],
-    })
+      ...(trimmed && {
+        $or: [
+          { username:    { $regex: trimmed, $options: "i" } },
+          { displayName: { $regex: trimmed, $options: "i" } },
+          { email:       { $regex: trimmed, $options: "i" } },
+        ],
+      }),
+    };
+
+    const users = await User.find(filter)
       .select("username displayName avatar avatarColor status customStatus")
       .limit(Number(limit))
       .lean();

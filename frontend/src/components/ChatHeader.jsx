@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useWorkspace } from "../context/WorkspaceContext";
+import { getSocket } from "../lib/socket/socket";
 import api from "../lib/api";
 
 // ── Channel Info Panel ────────────────────────────────────────────────────────
@@ -18,6 +19,7 @@ function ChannelInfoPanel({ channel, workspace, onClose }) {
   }, [channel?._id, workspace?._id]);
 
   const info = details || channel;
+
   const createdAt = info?.createdAt
     ? new Date(info.createdAt).toLocaleDateString(undefined, {
         year: "numeric",
@@ -141,18 +143,18 @@ function InfoRow({ icon, label, value, accent }) {
 }
 
 // ── useLiveMemberCount ────────────────────────────────────────────────────────
-// Single source of truth for the member count badge.
-// - Fetches from the detail endpoint once per channel (not every render).
-// - Returns a stable `refreshCount` callback so any child (MembersPanel,
-//   JoinChannelGate) can trigger a re-fetch after a membership change.
-// - While the fetch is in flight, returns `null` so the caller can show a
-//   spinner instead of a stale number.
+// Maintains an accurate live member count via:
+//   1. HTTP fetch on channel change (initial hydration)
+//   2. socket `channel:member_updated` event (join / leave / add — zero-latency)
+//   3. Manual refresh() callable by MembersPanel after its own mutations
 function useLiveMemberCount(workspace, channel, snapshotFallback) {
   const [liveCount, setLiveCount] = useState(null);
-  const fetchedForRef = useRef(null); // track which channelId we've fetched for
+  const [isLoading, setIsLoading] = useState(false);
 
+  // HTTP refresh — callable externally from MembersPanel after add/remove
   const refresh = useCallback(async () => {
     if (!workspace?._id || !channel?._id) return;
+    setIsLoading(true);
     try {
       const { data } = await api.get(
         `/workspaces/${workspace._id}/channels/${channel._id}`
@@ -161,33 +163,43 @@ function useLiveMemberCount(workspace, channel, snapshotFallback) {
         data.data?.members?.length ?? data.data?.memberCount ?? null;
       setLiveCount(count);
     } catch {
-      // silently fail — snapshotFallback is still shown
+      // silently fail — snapshotFallback still shows
+    } finally {
+      setIsLoading(false);
     }
   }, [workspace?._id, channel?._id]);
 
-  // Fetch once when the channel changes
+  // HTTP fetch whenever the active channel changes
   useEffect(() => {
     if (!channel?._id) return;
-    if (fetchedForRef.current === channel._id) return; // already fetched
-    fetchedForRef.current = channel._id;
-    setLiveCount(null); // reset while loading so we show spinner briefly
+    setLiveCount(null); // clear stale count from previous channel
     refresh();
-  }, [channel?._id, refresh]);
+  }, [channel?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // While loading show null; after fetch show live; never trust stale snapshot
-  // for the badge (only use snapshot as fallback if fetch never completes)
+  // ── Real-time socket listener ─────────────────────────────────────────────
+  // Listens for `channel:member_updated` emitted by the server on every
+  // join / leave / addChannelMembers mutation and updates the badge instantly,
+  // no polling required.
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !channel?._id) return;
+
+    const handler = ({ channelId, memberCount }) => {
+      if (channelId === channel._id) {
+        setLiveCount(memberCount);
+      }
+    };
+
+    socket.on("channel:member_updated", handler);
+    return () => socket.off("channel:member_updated", handler);
+  }, [channel?._id]);
+
   const displayCount = liveCount ?? snapshotFallback;
 
-  return [displayCount, liveCount === null, refresh];
-  //                     ^^^^^^^^^^^^^^^^^ isLoading flag
+  return [displayCount, isLoading, refresh];
 }
 
 // ── Main ChatHeader ───────────────────────────────────────────────────────────
-// Props:
-//   onOpenMembers(refreshCountFn) — called when the user clicks the members
-//     badge; passes down the refreshCount callback so MembersPanel can call
-//     it after a join/leave to update the badge without a full page refresh.
-//   isMember — hides member-only UI (search, members badge) for non-members.
 export default function ChatHeader({ onOpenMembers, isMember = true }) {
   const { activeWorkspace, activeChannel } = useWorkspace();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -197,7 +209,6 @@ export default function ChatHeader({ onOpenMembers, isMember = true }) {
   const searchRef = useRef(null);
   const debounceRef = useRef(null);
 
-  // Stale snapshot from the list endpoint — used only as fallback
   const snapshotCount =
     activeChannel?.memberCount ?? activeChannel?.members?.length ?? 0;
 
@@ -207,8 +218,6 @@ export default function ChatHeader({ onOpenMembers, isMember = true }) {
     snapshotCount
   );
 
-  // Wrap the parent's onOpenMembers to pass refreshCount down so the panel
-  // can call it after membership mutations (join / leave / add member).
   const handleOpenMembers = useCallback(() => {
     onOpenMembers(refreshCount);
   }, [onOpenMembers, refreshCount]);
@@ -266,7 +275,6 @@ export default function ChatHeader({ onOpenMembers, isMember = true }) {
             >
               <i className="ti ti-users text-[12px]" />
               {isCountLoading ? (
-                // Tiny inline spinner while the first fetch is in-flight
                 <span className="w-2.5 h-2.5 rounded-full border-2 border-slate-300 border-t-blue-500 animate-spin inline-block ml-0.5" />
               ) : (
                 <span>{displayCount > 0 ? displayCount : "—"}</span>

@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useWorkspace } from "../context/WorkspaceContext";
 import { useAuth } from "../context/AuthContext";
+import { getSocket } from "../lib/socket/socket";
 import api from "../lib/api";
 
 const STATUS_DOT = {
@@ -71,94 +72,262 @@ function MemberRow({ member, onOpenDM, onViewProfile }) {
   );
 }
 
-// ── Main panel ────────────────────────────────────────────────────────────────
-// Props:
-//   onMembersLoaded(count) — called once the real member list has been fetched
-//     so the parent (ChatPage) can trigger a badge refresh in ChatHeader.
-export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded }) {
-  const { activeWorkspace, activeChannel, myRole } = useWorkspace();
-  const { user: me } = useAuth();
+// ── Add People Tab ────────────────────────────────────────────────────────────
+function AddPeopleTab({ workspace, channel, currentMemberIds, onMembersAdded }) {
+  const [searchQ, setSearchQ]       = useState("");
+  const [searchRes, setSearchRes]   = useState([]);
+  const [selected, setSelected]     = useState([]);
+  const [adding, setAdding]         = useState(false);
+  const [addError, setAddError]     = useState("");
+  const [addSuccess, setAddSuccess] = useState("");
+  const debounceRef                 = useRef(null);
 
-  const [members, setMembers]             = useState([]);
-  const [searchQ, setSearchQ]             = useState("");
-  const [searchRes, setSearchRes]         = useState([]);
-  const [inviteUrl, setInviteUrl]         = useState("");
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [copied, setCopied]               = useState(false);
-  const [profileUser, setProfileUser]     = useState(null);
-  const [tab, setTab]                     = useState("members");
-  const debounceRef                       = useRef(null);
-
-  // Fetch real member list whenever the panel opens or the channel changes.
-  // After fetch we call onMembersLoaded so the header badge can update.
+  // ── FIX: currentMemberIds are already plain strings — search all workspace
+  //    members and filter out those already in the channel client-side.
   useEffect(() => {
-    if (!open || !activeChannel || !activeWorkspace) return;
-
-    api
-      .get(`/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}`)
-      .then(({ data }) => {
-        const populated = (data.data?.members || [])
-          .map((m) => m.user || m)
-          .filter(Boolean);
-        setMembers(populated);
-
-        // ← This is the key line: tell ChatHeader the real count
-        onMembersLoaded?.(populated.length);
-      })
-      .catch(() => {});
-  }, [open, activeChannel?._id, activeWorkspace?._id]); // intentionally omit onMembersLoaded
-
-  // Workspace-wide user search for the "Add People" tab
-  useEffect(() => {
-    if (!searchQ.trim() || !activeWorkspace) { setSearchRes([]); return; }
     clearTimeout(debounceRef.current);
+
+    if (!workspace) { setSearchRes([]); return; }
+
     debounceRef.current = setTimeout(async () => {
       try {
+        // ── FIX: correct URL — mounted at /users, so just /search suffix ───
+        // ── Also always send q (at least one char) because the controller  ──
+        // ── requires it. Use a broad wildcard when the box is empty so we  ──
+        // ── see everyone on tab open.                                       ──
+        const q = searchQ.trim() || " ";
         const { data } = await api.get(
-          `/workspaces/${activeWorkspace._id}/users/search`,
-          { params: { q: searchQ } }
+          `/workspaces/${workspace._id}/users/search`,
+          { params: { q, limit: 50 } }
         );
-        setSearchRes(data.data || []);
-      } catch {}
-    }, 300);
-  }, [searchQ, activeWorkspace?._id]);
 
-  const generateInvite = async () => {
-    setInviteLoading(true);
+        const selectedIds = new Set(selected.map((u) => u._id?.toString()));
+        const normalizedMemberIds = new Set(
+          currentMemberIds.map((id) => (typeof id === "object" ? id.toString() : id))
+        );
+
+        const filtered = (data.data || []).filter((u) => {
+          const uid = u._id?.toString();
+          return !normalizedMemberIds.has(uid) && !selectedIds.has(uid);
+        });
+
+        setSearchRes(filtered);
+      } catch {
+        setSearchRes([]);
+      }
+    }, 250);
+
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQ, workspace?._id, currentMemberIds, selected]);
+
+  const toggleSelect = (user) => {
+    setSelected((prev) =>
+      prev.find((u) => u._id === user._id)
+        ? prev.filter((u) => u._id !== user._id)
+        : [...prev, user]
+    );
+  };
+
+  const removeSelected = (userId) =>
+    setSelected((prev) => prev.filter((u) => u._id !== userId));
+
+  const handleAdd = async () => {
+    if (!selected.length) return;
+    setAdding(true);
+    setAddError("");
+    setAddSuccess("");
     try {
-      const { data } = await api.post(`/workspaces/${activeWorkspace._id}/invite-link`);
-      setInviteUrl(data.inviteUrl);
+      await api.post(
+        `/workspaces/${workspace._id}/channels/${channel._id}/members`,
+        { userIds: selected.map((u) => u._id) }
+      );
+      setAddSuccess(
+        `Added ${selected.length} member${selected.length !== 1 ? "s" : ""} successfully`
+      );
+      setSelected([]);
+      onMembersAdded?.();
+      setTimeout(() => setAddSuccess(""), 3000);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to generate link");
+      setAddError(err.response?.data?.message || "Failed to add members");
     } finally {
-      setInviteLoading(false);
+      setAdding(false);
     }
   };
 
-  const copyInvite = () => {
-    navigator.clipboard.writeText(inviteUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  return (
+    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      {/* Search input */}
+      <div>
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+          Search workspace members
+        </p>
+        <div className="relative">
+          <i className="ti ti-search absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none" />
+          <input
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="Find someone to add…"
+            className="w-full bg-slate-50 border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-md py-2 pl-7 pr-3 text-[12px] text-slate-700 placeholder:text-slate-400 outline-none transition-all box-border"
+          />
+        </div>
 
-  const handleOpenDM    = (targetUser) => { onOpenDM(targetUser); onClose(); };
+        {/* Results list — always visible, not just when typing */}
+        <div className="mt-1.5 bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm max-h-[200px] overflow-y-auto">
+          {searchRes.length === 0 ? (
+            <p className="text-[12px] text-slate-400 text-center py-3">
+              {currentMemberIds.length > 0 && !searchQ
+                ? "All workspace members are already in this channel"
+                : "No results"}
+            </p>
+          ) : (
+            searchRes.map((u) => (
+              <div
+                key={u._id}
+                onClick={() => toggleSelect(u)}
+                className="flex items-center gap-2.5 px-3 py-2 border-b border-slate-50 last:border-0 cursor-pointer hover:bg-blue-50 transition-colors"
+              >
+                <MemberAvatar user={u} size={28} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12px] text-slate-700 font-medium truncate">
+                    {u.displayName || u.username}
+                  </div>
+                  <div className="text-[10px] text-slate-400">@{u.username}</div>
+                </div>
+                <i className="ti ti-plus text-[13px] text-blue-500" />
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Selected chips */}
+      {selected.length > 0 && (
+        <div>
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+            Selected ({selected.length})
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {selected.map((u) => (
+              <div
+                key={u._id}
+                className="flex items-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-full pl-2 pr-1 py-0.5 text-[11px] font-medium"
+              >
+                <span>{u.displayName || u.username}</span>
+                <button
+                  onClick={() => removeSelected(u._id)}
+                  className="w-4 h-4 rounded-full flex items-center justify-center bg-blue-200 hover:bg-blue-300 text-blue-700 border-none cursor-pointer transition-colors"
+                >
+                  <i className="ti ti-x text-[9px]" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {addError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-[12px]">
+          {addError}
+        </div>
+      )}
+      {addSuccess && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2 text-[12px] flex items-center gap-1.5">
+          <i className="ti ti-check text-[13px]" /> {addSuccess}
+        </div>
+      )}
+
+      {selected.length > 0 && (
+        <button
+          onClick={handleAdd}
+          disabled={adding}
+          className="w-full flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white border-none rounded-lg py-2.5 text-[13px] font-medium cursor-pointer transition-colors font-inherit"
+        >
+          <i className="ti ti-user-plus" />
+          {adding
+            ? "Adding…"
+            : `Add ${selected.length} member${selected.length !== 1 ? "s" : ""} to channel`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Main panel ────────────────────────────────────────────────────────────────
+export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded, initialTab }) {
+  const { activeWorkspace, activeChannel } = useWorkspace();
+  const { user: me } = useAuth();
+
+  const [members, setMembers]         = useState([]);
+  const [filterQ, setFilterQ]         = useState("");
+  const [profileUser, setProfileUser] = useState(null);
+  // ── Allow parent to open directly on "add" tab (from sidebar Add Members btn)
+  const [tab, setTab]                 = useState(initialTab || "members");
+
+  // Re-sync tab if parent changes it while panel is open
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
+
+  // ── FIX: extract user objects AND preserve raw member objects for ID lookup
+  const fetchMembers = useCallback(() => {
+    if (!activeChannel || !activeWorkspace) return;
+    api
+      .get(`/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}`)
+      .then(({ data }) => {
+        const rawMembers = data.data?.members || [];
+        // Each entry is either { user: {...}, role } or a plain user object
+        const populated = rawMembers
+          .map((m) => {
+            const userObj = m.user && typeof m.user === "object" ? m.user : m;
+            return userObj;
+          })
+          .filter(Boolean);
+        setMembers(populated);
+        onMembersLoaded?.();
+      })
+      .catch(() => {});
+  }, [activeChannel?._id, activeWorkspace?._id]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetchMembers();
+  }, [open, activeChannel?._id, activeWorkspace?._id]);
+
+  // Real-time socket sync
+  useEffect(() => {
+    if (!open) return;
+    const socket = getSocket();
+    if (!socket || !activeChannel?._id) return;
+    const handler = ({ channelId }) => {
+      if (channelId === activeChannel._id) fetchMembers();
+    };
+    socket.on("channel:member_updated", handler);
+    return () => socket.off("channel:member_updated", handler);
+  }, [open, activeChannel?._id, fetchMembers]);
+
+  const myChannelRole = activeChannel?.myRole;
+  const isChannelAdmin =
+    myChannelRole === "admin" ||
+    members.find((m) => m._id === me?._id)?.role === "admin" ||
+    ["owner", "admin"].includes(activeWorkspace?.myRole);
+
+  const handleOpenDM      = (targetUser) => { onOpenDM(targetUser); onClose(); };
   const handleViewProfile = (targetUser) => setProfileUser(targetUser);
 
   const filtered = members.filter((m) =>
-    !searchQ ||
-    (m.displayName || m.username || "").toLowerCase().includes(searchQ.toLowerCase())
+    !filterQ ||
+    (m.displayName || m.username || "").toLowerCase().includes(filterQ.toLowerCase())
   );
+
+  // ── FIX: extract IDs as plain strings for reliable comparison in AddPeopleTab
+  const currentMemberIds = members.map((m) => m._id?.toString?.() ?? m._id);
 
   if (!open) return null;
 
   return (
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 z-[49]" onClick={onClose} />
-
-      {/* Panel */}
       <div className="fixed top-0 right-0 bottom-0 w-[300px] z-50 bg-white border-l border-slate-200 flex flex-col shadow-xl">
-
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-slate-100 flex-shrink-0">
           <div>
@@ -177,15 +346,12 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded 
           </button>
         </div>
 
-        {/* Tabs — "Add People" only visible to admins/owners */}
+        {/* Tabs */}
         <div className="flex border-b border-slate-100 flex-shrink-0">
-          {[
-            "members",
-            ...(["owner", "admin"].includes(myRole) ? ["add"] : []),
-          ].map((t) => (
+          {["members", ...(isChannelAdmin ? ["add"] : [])].map((t) => (
             <button
               key={t}
-              onClick={() => { setTab(t); setSearchQ(""); setProfileUser(null); }}
+              onClick={() => { setTab(t); setFilterQ(""); setProfileUser(null); }}
               className={`flex-1 py-2.5 text-[12px] font-medium cursor-pointer bg-transparent border-none border-b-2 transition-all capitalize ${
                 tab === t
                   ? "border-blue-600 text-blue-600"
@@ -197,21 +363,20 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded 
           ))}
         </div>
 
-        {/* ── Members tab ── */}
+        {/* Members tab */}
         {tab === "members" && (
           <>
             <div className="px-3 py-2.5 flex-shrink-0">
               <div className="relative">
                 <i className="ti ti-search absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none" />
                 <input
-                  value={searchQ}
-                  onChange={(e) => setSearchQ(e.target.value)}
+                  value={filterQ}
+                  onChange={(e) => setFilterQ(e.target.value)}
                   placeholder="Filter members…"
                   className="w-full bg-slate-50 border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-md py-1.5 pl-7 pr-3 text-[12px] text-slate-700 placeholder:text-slate-400 outline-none transition-all box-border"
                 />
               </div>
             </div>
-
             <div className="flex-1 overflow-y-auto">
               {filtered.length === 0 && (
                 <p className="text-[12px] text-slate-400 text-center py-5">No members found</p>
@@ -228,103 +393,20 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded 
           </>
         )}
 
-        {/* ── Add People tab ── */}
-        {tab === "add" && (
-          <div className="flex-1 overflow-y-auto p-4">
-            <div className="mb-5">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Search by name or username
-              </p>
-              <div className="relative">
-                <i className="ti ti-search absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none" />
-                <input
-                  value={searchQ}
-                  onChange={(e) => setSearchQ(e.target.value)}
-                  placeholder="Find someone in workspace…"
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-md py-2 pl-7 pr-3 text-[12px] text-slate-700 placeholder:text-slate-400 outline-none transition-all box-border"
-                />
-              </div>
-
-              {searchQ && (
-                <div className="mt-2 bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
-                  {searchRes.length === 0 && (
-                    <p className="text-[12px] text-slate-400 text-center py-3.5">No results</p>
-                  )}
-                  {searchRes.map((u) => (
-                    <div
-                      key={u._id}
-                      className="flex items-center gap-2.5 px-3 py-2 border-b border-slate-50 last:border-0"
-                    >
-                      <MemberAvatar user={u} size={28} />
-                      <div className="flex-1">
-                        <div className="text-[12px] text-slate-700 font-medium">
-                          {u.displayName || u.username}
-                        </div>
-                        <div className="text-[10px] text-slate-400">@{u.username}</div>
-                      </div>
-                      <button
-                        onClick={() => handleOpenDM(u)}
-                        className="bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-md px-2 py-0.5 text-blue-600 text-[11px] cursor-pointer transition-colors font-inherit"
-                      >
-                        DM
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Invite link */}
-            <div className="border-t border-slate-100 pt-4">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                Invite Link
-              </p>
-              <p className="text-[12px] text-slate-500 mb-3 leading-relaxed">
-                Share this link with people you want to invite to the workspace.
-              </p>
-
-              {!inviteUrl ? (
-                <button
-                  onClick={generateInvite}
-                  disabled={inviteLoading}
-                  className="w-full flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white border-none rounded-lg py-2.5 text-[13px] cursor-pointer transition-colors font-inherit"
-                >
-                  <i className="ti ti-link" />
-                  {inviteLoading ? "Generating…" : "Generate Invite Link"}
-                </button>
-              ) : (
-                <div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-[11px] text-slate-500 break-all mb-2">
-                    {inviteUrl}
-                  </div>
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={copyInvite}
-                      className={`flex-1 flex items-center justify-center gap-1.5 border rounded-lg py-1.5 text-[12px] cursor-pointer transition-colors font-inherit ${
-                        copied
-                          ? "bg-emerald-50 border-emerald-200 text-emerald-600"
-                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-600"
-                      }`}
-                    >
-                      <i className={`ti ${copied ? "ti-check" : "ti-copy"}`} />
-                      {copied ? "Copied!" : "Copy"}
-                    </button>
-                    <button
-                      onClick={() => setInviteUrl("")}
-                      title="Regenerate"
-                      className="bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-lg px-2.5 py-1.5 text-[12px] text-slate-500 cursor-pointer transition-colors"
-                    >
-                      <i className="ti ti-refresh" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+        {/* Add People tab */}
+        {tab === "add" && isChannelAdmin && (
+          <AddPeopleTab
+            workspace={activeWorkspace}
+            channel={activeChannel}
+            currentMemberIds={currentMemberIds}
+            onMembersAdded={() => {
+              fetchMembers();
+              onMembersLoaded?.();
+            }}
+          />
         )}
       </div>
 
-      {/* ── Mini profile popup ── */}
       {profileUser && (
         <UserProfilePopup
           user={profileUser}
@@ -363,13 +445,11 @@ function UserProfilePopup({ user, onClose, onOpenDM, isMe }) {
               : initials}
           </div>
         </div>
-
         <div className="px-4 pb-4">
           <div className="text-[15px] font-semibold text-slate-800">
             {user.displayName || user.username}
           </div>
           <div className="text-[12px] text-slate-400 mb-1.5">@{user.username}</div>
-
           <div className="flex items-center gap-1.5 mb-2.5">
             <div className={`w-[7px] h-[7px] rounded-full ${statusDot}`} />
             <span className={`text-[11px] capitalize ${statusText}`}>
@@ -381,11 +461,9 @@ function UserProfilePopup({ user, onClose, onOpenDM, isMe }) {
               </span>
             )}
           </div>
-
           {user.bio && (
             <p className="text-[12px] text-slate-500 mb-3 leading-relaxed">{user.bio}</p>
           )}
-
           {!isMe && (
             <button
               onClick={onOpenDM}

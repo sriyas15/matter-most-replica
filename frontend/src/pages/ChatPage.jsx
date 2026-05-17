@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import WorkspaceSidebar from "../components/WorkspaceSidebar";
 import ChatHeader from "../components/ChatHeader";
 import MessageList from "../components/MessageList";
@@ -9,47 +9,55 @@ import { useWorkspace } from "../context/WorkspaceContext";
 import { useDM } from "../context/DMContext";
 import api from "../lib/api";
 
-// ── Empty state (no channel selected) ────────────────────────────────────────
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+function LoadingSkeleton() {
+  return (
+    <div className="flex-1 flex flex-col bg-white overflow-hidden">
+      <div className="h-[50px] border-b border-slate-200 flex items-center px-4 gap-3 flex-shrink-0">
+        <div className="w-24 h-4 bg-slate-100 rounded animate-pulse" />
+        <div className="w-12 h-6 bg-slate-100 rounded-md animate-pulse" />
+      </div>
+      <div className="flex-1 px-4 py-4 flex flex-col gap-4">
+        {[72, 48, 88, 56, 64].map((w, i) => (
+          <div key={i} className="flex gap-3 items-start">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 animate-pulse flex-shrink-0" />
+            <div className="flex flex-col gap-1.5 flex-1">
+              <div className="h-3 bg-slate-100 rounded animate-pulse" style={{ width: `${w}%` }} />
+              <div className="h-3 bg-slate-100 rounded animate-pulse" style={{ width: `${w * 0.6}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Empty state ───────────────────────────────────────────────────────────────
 function EmptyState() {
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        gap: 12,
-        background: "white",
-      }}
-    >
+    <div className="flex-1 flex items-center justify-center flex-col gap-3 bg-white">
       <div style={{ fontSize: 52 }}>💬</div>
       <p style={{ color: "#2563eb", fontSize: 14, margin: 0 }}>
         Select a channel to start chatting
       </p>
-      <p style={{ fontSize: 12, margin: 0 }}>
-        Or create a new one with the{" "}
-        <strong style={{ color: "#7070a0" }}>+</strong> button
+      <p style={{ fontSize: 12, margin: 0, color: "#94a3b8" }}>
+        Or create a new one with the <strong style={{ color: "#7070a0" }}>+</strong> button
       </p>
     </div>
   );
 }
 
-// ── Join gate — shown to non-members of a public channel ─────────────────────
-// ⚠️  Fix #5 / Feature: non-members see this instead of messages + members
+// ── Join gate ─────────────────────────────────────────────────────────────────
 function JoinChannelGate({ channel, onJoined }) {
   const { activeWorkspace, updateChannel, selectChannel } = useWorkspace();
   const [joining, setJoining] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
 
   const handleJoin = async () => {
     setJoining(true);
     setError("");
     try {
-      await api.post(
-        `/workspaces/${activeWorkspace._id}/channels/${channel._id}/join`
-      );
-      // Mark channel as joined in context so the UI switches immediately
+      await api.post(`/workspaces/${activeWorkspace._id}/channels/${channel._id}/join`);
       const updated = { ...channel, isMember: true };
       updateChannel(updated);
       selectChannel(updated);
@@ -62,107 +70,39 @@ function JoinChannelGate({ channel, onJoined }) {
   };
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        gap: 16,
-        background: "white",
-        padding: "0 24px",
-      }}
-    >
-      {/* Channel icon */}
-      <div
-        style={{
-          width: 64,
-          height: 64,
-          borderRadius: 16,
-          background: "#eff6ff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 28,
-          color: "#2563eb",
-        }}
-      >
+    <div className="flex-1 flex items-center justify-center flex-col gap-4 bg-white px-6">
+      <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-3xl text-blue-600">
         <i className={`ti ${channel.type === "private" ? "ti-lock" : "ti-hash"}`} />
       </div>
-
-      {/* Name */}
-      <div style={{ textAlign: "center" }}>
-        <h2
-          style={{
-            margin: "0 0 4px",
-            fontSize: 20,
-            fontWeight: 700,
-            color: "#1e293b",
-          }}
-        >
+      <div className="text-center">
+        <h2 className="text-xl font-bold text-slate-800 mb-1">
           #{channel.displayName || channel.name}
         </h2>
         {channel.description && (
-          <p
-            style={{
-              margin: "0 0 4px",
-              fontSize: 13,
-              color: "#64748b",
-              maxWidth: 360,
-              lineHeight: 1.6,
-            }}
-          >
+          <p className="text-[13px] text-slate-500 max-w-sm leading-relaxed mb-1">
             {channel.description}
           </p>
         )}
-        <p style={{ margin: 0, fontSize: 12, color: "#94a3b8" }}>
+        <p className="text-xs text-slate-400">
           {channel.memberCount
             ? `${channel.memberCount} member${channel.memberCount !== 1 ? "s" : ""}`
             : "Public channel"}
         </p>
       </div>
-
-      {/* Error */}
       {error && (
-        <div
-          style={{
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            color: "#dc2626",
-            borderRadius: 8,
-            padding: "8px 14px",
-            fontSize: 13,
-          }}
-        >
+        <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-2 text-[13px]">
           {error}
         </div>
       )}
-
-      {/* Join button */}
       <button
         onClick={handleJoin}
         disabled={joining}
-        style={{
-          background: joining ? "#93c5fd" : "#2563eb",
-          color: "white",
-          border: "none",
-          borderRadius: 10,
-          padding: "10px 28px",
-          fontSize: 14,
-          fontWeight: 600,
-          cursor: joining ? "not-allowed" : "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          transition: "background 0.15s",
-        }}
+        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white border-none rounded-xl px-7 py-2.5 text-[14px] font-semibold cursor-pointer transition-colors"
       >
         <i className="ti ti-plus" />
         {joining ? "Joining…" : `Join #${channel.displayName || channel.name}`}
       </button>
-
-      <p style={{ fontSize: 11, color: "#94a3b8", margin: 0 }}>
+      <p className="text-[11px] text-slate-400">
         You'll see all messages and members after joining.
       </p>
     </div>
@@ -171,34 +111,23 @@ function JoinChannelGate({ channel, onJoined }) {
 
 // ── Chat area ─────────────────────────────────────────────────────────────────
 function ChatArea({ onOpenMembers }) {
-  const { activeChannel } = useWorkspace();
+  const { activeChannel, loading } = useWorkspace();
 
+  // Channels still loading — show skeleton instead of empty state
+  if (loading) return <LoadingSkeleton />;
+
+  // Channels loaded but workspace has none yet
   if (!activeChannel) return <EmptyState />;
 
-  // ⚠️  Fix #5 / Feature: gate access for non-members
-  // isMember is undefined for channels loaded before the fix — treat undefined
-  // as true (backwards-compatible) so existing members aren't locked out.
   const isMember = activeChannel.isMember !== false;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        flex: 1,
-        overflow: "hidden",
-        background: "white",
-      }}
-    >
-      {/* Header always visible so the user can see channel name */}
+    <div className="flex flex-col flex-1 overflow-hidden bg-white">
       <ChatHeader onOpenMembers={onOpenMembers} isMember={isMember} />
-
       {isMember ? (
         <>
           <MessageList />
-          <MessageInput
-            channelName={activeChannel.displayName || activeChannel.name}
-          />
+          <MessageInput channelName={activeChannel.displayName || activeChannel.name} />
         </>
       ) : (
         <JoinChannelGate channel={activeChannel} />
@@ -210,39 +139,42 @@ function ChatArea({ onOpenMembers }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ChatPage() {
   const [membersOpen, setMembersOpen] = useState(false);
-  const { openDMWithUser, activeDM } = useDM();
-  const { activeChannel } = useWorkspace();
+  const { openDMWithUser, activeDM }  = useDM();
+  const { activeChannel }             = useWorkspace();
+  const refreshCountRef               = useRef(null);
 
-  const handleOpenDM = useCallback(
-    async (targetUser) => {
-      setMembersOpen(false);
-      await openDMWithUser(targetUser);
-    },
-    [openDMWithUser]
-  );
+  const handleOpenDM = useCallback(async (targetUser) => {
+    setMembersOpen(false);
+    await openDMWithUser(targetUser);
+  }, [openDMWithUser]);
 
-  // Only allow opening the members panel if the user is a member
-  const handleOpenMembers = useCallback(() => {
-    if (activeChannel?.isMember !== false) {
-      setMembersOpen(true);
-    }
-  }, [activeChannel]);
+  const handleOpenMembers = useCallback((refreshCount) => {
+    refreshCountRef.current = refreshCount;
+    setMembersOpen(true);
+  }, []);
+
+  const handleMembersLoaded = useCallback(() => {
+    refreshCountRef.current?.();
+  }, []);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       <WorkspaceSidebar />
 
+      {/* Channel chat is always the main content area */}
       <ChatArea onOpenMembers={handleOpenMembers} />
 
-      {/* Members panel — only mount when channel membership is confirmed */}
+      {/* Members panel */}
       {activeChannel?.isMember !== false && (
         <MembersPanel
           open={membersOpen}
           onClose={() => setMembersOpen(false)}
           onOpenDM={handleOpenDM}
+          onMembersLoaded={handleMembersLoaded}
         />
       )}
 
+      {/* DM panel — floating popup in bottom-right, never replaces channel view */}
       {activeDM && <DMPanel />}
     </div>
   );

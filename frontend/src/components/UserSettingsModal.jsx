@@ -1,38 +1,79 @@
 import { useState } from "react";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import Modal from "./Modal";
 import { Field, Input, Textarea, Button, ErrorBanner } from "./FormElements";
 import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
 
 const STATUS_OPTIONS = [
-  { value: "online",  label: "🟢 Online",          dot: "bg-emerald-500" },
-  { value: "away",    label: "🟡 Away",             dot: "bg-amber-400"   },
-  { value: "dnd",     label: "🔴 Do Not Disturb",   dot: "bg-red-500"     },
-  { value: "offline", label: "⚫ Invisible",         dot: "bg-slate-400"   },
+  { value: "online",  label: "🟢 Online",        dot: "bg-emerald-500" },
+  { value: "away",    label: "🟡 Away",           dot: "bg-amber-400"   },
+  { value: "dnd",     label: "🔴 Do Not Disturb", dot: "bg-red-500"     },
+  { value: "offline", label: "⚫ Invisible",       dot: "bg-slate-400"   },
 ];
 
+// ── Password input with show/hide toggle ──────────────────────────────────────
+function PasswordInput({ value, onChange, placeholder }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="w-full border border-slate-200 rounded-lg px-3 py-2 pr-9 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all box-border font-inherit"
+      />
+      <button
+        type="button"
+        onClick={() => setShow((p) => !p)}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-transparent border-none cursor-pointer p-0 flex items-center"
+        tabIndex={-1}
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? <FiEye size={15} /> : <FiEyeOff size={15} /> }
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export default function UserSettingsModal({ open, onClose }) {
   const { user, updateUser } = useAuth();
-  const [tab, setTab]         = useState("profile");
+
+  const [tab, setTab] = useState("profile");
+
   const [profile, setProfile] = useState({
     displayName: user?.displayName || "",
     bio:         user?.bio         || "",
     phone:       user?.phone       || "",
   });
-  const [status, setStatus]   = useState(user?.status || "online");
+
+  const [status, setStatus] = useState(user?.status || "online");
   const [customStatus, setCS] = useState({
     emoji: user?.customStatus?.emoji || "",
     text:  user?.customStatus?.text  || "",
   });
-  const [pwForm, setPwForm]   = useState({ currentPassword: "", newPassword: "", confirm: "" });
+
+  const [pwForm, setPwForm] = useState({
+    currentPassword: "",
+    newPassword:     "",
+    confirm:         "",
+  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
   const [success, setSuccess] = useState("");
 
-  const flash = (msg) => { setSuccess(msg); setTimeout(() => setSuccess(""), 2500); };
+  const flash = (msg) => {
+    setSuccess(msg);
+    setTimeout(() => setSuccess(""), 2500);
+  };
 
+  // ── Profile ───────────────────────────────────────────────────────────────
   const saveProfile = async () => {
-    setError(""); setLoading(true);
+    setError("");
+    setLoading(true);
     try {
       const { data } = await api.patch("/users/me", {
         displayName: profile.displayName,
@@ -42,35 +83,49 @@ export default function UserSettingsModal({ open, onClose }) {
       updateUser(data.data);
       flash("Profile saved");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to save");
-    } finally { setLoading(false); }
+      setError(err.response?.data?.message || "Failed to save profile");
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // ── Status ────────────────────────────────────────────────────────────────
   const saveStatus = async () => {
-    setError(""); setLoading(true);
+    setError("");
+    setLoading(true);
     try {
+      // PATCH /api/users/me/status — backend accepts { status, customStatus }
       await api.patch("/users/me/status", { status, customStatus });
       updateUser({ status, customStatus });
       flash("Status updated");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to update status");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // ── Password ──────────────────────────────────────────────────────────────
   const savePassword = async () => {
+    if (!pwForm.currentPassword) { setError("Enter your current password"); return; }
+    if (pwForm.newPassword.length < 8) { setError("New password must be at least 8 characters"); return; }
     if (pwForm.newPassword !== pwForm.confirm) { setError("Passwords do not match"); return; }
-    if (pwForm.newPassword.length < 8)         { setError("Password must be at least 8 characters"); return; }
-    setError(""); setLoading(true);
+
+    setError("");
+    setLoading(true);
     try {
+      // PATCH /api/users/me/password — backend: { currentPassword, newPassword }
       await api.patch("/users/me/password", {
         currentPassword: pwForm.currentPassword,
         newPassword:     pwForm.newPassword,
       });
       setPwForm({ currentPassword: "", newPassword: "", confirm: "" });
-      flash("Password changed");
+      flash("Password changed successfully");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to change password");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const initials = (user?.displayName || user?.username || "?")
@@ -80,17 +135,18 @@ export default function UserSettingsModal({ open, onClose }) {
 
   return (
     <Modal open={open} onClose={onClose} title="Settings" width={520}>
+
       {/* Tab bar */}
       <div className="flex gap-1 mb-5 border-b border-slate-100 pb-3">
         {tabs.map((t) => (
           <button
             key={t}
             onClick={() => { setTab(t); setError(""); setSuccess(""); }}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-medium capitalize cursor-pointer border transition-colors
-              ${tab === t
+            className={`px-3.5 py-1.5 rounded-md text-xs font-medium capitalize cursor-pointer border transition-colors ${
+              tab === t
                 ? "bg-blue-50 border-blue-200 text-blue-600"
                 : "bg-transparent border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-              }`}
+            }`}
           >
             {t}
           </button>
@@ -100,8 +156,9 @@ export default function UserSettingsModal({ open, onClose }) {
       <ErrorBanner message={error} />
 
       {success && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 text-xs text-emerald-700 mb-4">
-          ✓ {success}
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 text-xs text-emerald-700 mb-4 flex items-center gap-1.5">
+          <i className="ti ti-check text-[13px]" />
+          {success}
         </div>
       )}
 
@@ -118,19 +175,35 @@ export default function UserSettingsModal({ open, onClose }) {
                 : initials}
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-800">{user?.displayName || user?.username}</p>
+              <p className="text-sm font-medium text-slate-800">
+                {user?.displayName || user?.username}
+              </p>
               <p className="text-xs text-slate-400">@{user?.username}</p>
             </div>
           </div>
 
           <Field label="Display Name">
-            <Input value={profile.displayName} onChange={(e) => setProfile((p) => ({ ...p, displayName: e.target.value }))} placeholder="Your name" maxLength={64} />
+            <Input
+              value={profile.displayName}
+              onChange={(e) => setProfile((p) => ({ ...p, displayName: e.target.value }))}
+              placeholder="Your name"
+              maxLength={64}
+            />
           </Field>
           <Field label="Bio">
-            <Textarea value={profile.bio} onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))} placeholder="Tell your team about yourself" rows={2} />
+            <Textarea
+              value={profile.bio}
+              onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
+              placeholder="Tell your team about yourself"
+              rows={2}
+            />
           </Field>
           <Field label="Phone">
-            <Input value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} placeholder="+1 234 567 8900" />
+            <Input
+              value={profile.phone}
+              onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
+              placeholder="+1 234 567 8900"
+            />
           </Field>
 
           <Button onClick={saveProfile} disabled={loading} fullWidth>
@@ -148,11 +221,11 @@ export default function UserSettingsModal({ open, onClose }) {
                 <div
                   key={opt.value}
                   onClick={() => setStatus(opt.value)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer border transition-colors
-                    ${status === opt.value
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer border transition-colors ${
+                    status === opt.value
                       ? "bg-blue-50 border-blue-200"
                       : "bg-slate-50 border-slate-100 hover:bg-slate-100"
-                    }`}
+                  }`}
                 >
                   <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${opt.dot}`} />
                   <span className={`text-sm ${status === opt.value ? "text-slate-800 font-medium" : "text-slate-500"}`}>
@@ -193,13 +266,25 @@ export default function UserSettingsModal({ open, onClose }) {
       {tab === "password" && (
         <>
           <Field label="Current Password">
-            <Input type="password" value={pwForm.currentPassword} onChange={(e) => setPwForm((p) => ({ ...p, currentPassword: e.target.value }))} placeholder="••••••••" />
+            <PasswordInput
+              value={pwForm.currentPassword}
+              onChange={(e) => setPwForm((p) => ({ ...p, currentPassword: e.target.value }))}
+              placeholder="Enter current password"
+            />
           </Field>
           <Field label="New Password">
-            <Input type="password" value={pwForm.newPassword} onChange={(e) => setPwForm((p) => ({ ...p, newPassword: e.target.value }))} placeholder="Min 8 characters" />
+            <PasswordInput
+              value={pwForm.newPassword}
+              onChange={(e) => setPwForm((p) => ({ ...p, newPassword: e.target.value }))}
+              placeholder="Min 8 characters"
+            />
           </Field>
           <Field label="Confirm New Password">
-            <Input type="password" value={pwForm.confirm} onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))} placeholder="Repeat new password" />
+            <PasswordInput
+              value={pwForm.confirm}
+              onChange={(e) => setPwForm((p) => ({ ...p, confirm: e.target.value }))}
+              placeholder="Repeat new password"
+            />
           </Field>
 
           <Button onClick={savePassword} disabled={loading} fullWidth>
@@ -207,6 +292,7 @@ export default function UserSettingsModal({ open, onClose }) {
           </Button>
         </>
       )}
+
     </Modal>
   );
 }

@@ -8,11 +8,12 @@ import CreateChannelModal from "./CreateChannelModal";
 import NewDMModal from "./NewDMModal";
 import CreateWorkspaceModal from "./CreateWorkspaceModal";
 import MembersPanel from "./MembersPanel";
+import InviteLinkModal from "./InviteLinkModal";
 
 const STATUS_COLOR = {
-  online: "bg-emerald-500",
-  away: "bg-amber-400",
-  dnd: "bg-red-500",
+  online:  "bg-emerald-500",
+  away:    "bg-amber-400",
+  dnd:     "bg-red-500",
   offline: "bg-slate-400",
 };
 
@@ -24,7 +25,7 @@ function WorkspaceSettingsModal({ onClose }) {
     description: activeWorkspace?.description || "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
   const [success, setSuccess] = useState("");
 
   const flash = (msg) => {
@@ -62,7 +63,7 @@ function WorkspaceSettingsModal({ onClose }) {
           <span className="text-[15px] font-semibold text-slate-800">Team Settings</span>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors"
+            className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors border-none bg-transparent cursor-pointer"
           >
             <i className="ti ti-x" />
           </button>
@@ -123,14 +124,14 @@ function WorkspaceSettingsModal({ onClose }) {
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium"
+            className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium border-none cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={loading || !form.name.trim()}
-            className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors font-medium"
+            className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors font-medium border-none cursor-pointer"
           >
             {loading ? "Saving…" : "Save Changes"}
           </button>
@@ -144,7 +145,7 @@ function WorkspaceSettingsModal({ onClose }) {
 function LeaveWorkspaceModal({ onClose }) {
   const { activeWorkspace, workspaces, selectWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
 
   const handleLeave = async () => {
     setLoading(true);
@@ -173,7 +174,7 @@ function LeaveWorkspaceModal({ onClose }) {
           <span className="text-[15px] font-semibold text-slate-800">Leave Team</span>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors"
+            className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 transition-colors border-none bg-transparent cursor-pointer"
           >
             <i className="ti ti-x" />
           </button>
@@ -200,14 +201,14 @@ function LeaveWorkspaceModal({ onClose }) {
         <div className="flex gap-2 justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium"
+            className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium border-none cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleLeave}
             disabled={loading}
-            className="px-4 py-2 text-sm text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors font-medium"
+            className="px-4 py-2 text-sm text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-lg transition-colors font-medium border-none cursor-pointer"
           >
             {loading ? "Leaving…" : "Leave Team"}
           </button>
@@ -218,7 +219,7 @@ function LeaveWorkspaceModal({ onClose }) {
 }
 
 // ── Workspace name dropdown ───────────────────────────────────────────────────
-function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLeave }) {
+function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLeave, onInvite, myRole }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -230,12 +231,17 @@ function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLea
   }, [onClose]);
 
   const items = [
-    { icon: "ti-users", label: "Members", action: onMembers, danger: false },
-    { icon: "ti-plus", label: "Create Team", action: onCreateTeam, danger: false },
+    { icon: "ti-users",       label: "Members",      action: onMembers,    danger: false },
+    // Invite People — only for admins/owners who can generate invite links
+    ...( ["owner", "admin"].includes(myRole)
+      ? [{ icon: "ti-user-plus", label: "Invite People", action: onInvite, danger: false }]
+      : []
+    ),
+    { icon: "ti-plus",        label: "Create Team",  action: onCreateTeam, danger: false },
     { divider: true },
-    { icon: "ti-settings", label: "Team Settings", action: onSettings, danger: false },
+    { icon: "ti-settings",    label: "Team Settings", action: onSettings,  danger: false },
     { divider: true },
-    { icon: "ti-door-exit", label: "Leave Team", action: onLeave, danger: true },
+    { icon: "ti-door-exit",   label: "Leave Team",   action: onLeave,      danger: true },
   ];
 
   return (
@@ -249,10 +255,7 @@ function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLea
         ) : (
           <button
             key={i}
-            onClick={() => {
-              item.action();
-              onClose();
-            }}
+            onClick={() => { item.action(); onClose(); }}
             className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium bg-transparent border-none cursor-pointer text-left transition-colors hover:bg-slate-50 ${
               item.danger ? "text-red-500" : "text-slate-600"
             }`}
@@ -290,14 +293,18 @@ function SectionHeader({ title, collapsed, onToggle, onAdd }) {
 }
 
 // ── Channel row ───────────────────────────────────────────────────────────────
-function ChannelItem({ channel, active, onClick, unread }) {
-  const [hovered, setHovered] = useState(false);
+function ChannelItem({ channel, active, onClick, unread, onAddMembers, myRole }) {
+  const [hovered, setHovered]   = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { activeWorkspace, updateChannel, selectChannel } = useWorkspace();
 
-  const isGeneral = channel.name === "general";
-  // ⚠️  Bug fix #2: show action buttons when active OR hovered (not only hovered)
+  const isGeneral   = channel.name === "general";
   const showActions = hovered || active;
+
+  // Only channel members who are admins (or workspace admins/owners) can add members
+  const canAddMembers =
+    channel.isMember !== false &&
+    (channel.myRole === "admin" || ["owner", "admin"].includes(myRole));
 
   const handleFavorite = async (e) => {
     e.stopPropagation();
@@ -321,8 +328,6 @@ function ChannelItem({ channel, active, onClick, unread }) {
     } catch {}
   };
 
-  // ⚠️  Bug fix #4: use _remove flag so the channel disappears from the list
-  //     immediately after leaving, and deselect if it was the active channel.
   const handleLeave = async (e) => {
     e.stopPropagation();
     setMenuOpen(false);
@@ -330,26 +335,26 @@ function ChannelItem({ channel, active, onClick, unread }) {
       await api.delete(
         `/workspaces/${activeWorkspace._id}/channels/${channel._id}/leave`
       );
-      // For private channels — remove entirely from sidebar
-      // For public channels — keep in list but mark as non-member
       if (channel.type === "private") {
         updateChannel({ _id: channel._id, _remove: true });
       } else {
         updateChannel({ ...channel, isMember: false });
-        // Deselect so ChatArea shows the join gate
         if (active) selectChannel({ ...channel, isMember: false });
       }
     } catch {}
+  };
+
+  const handleAddMembers = (e) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    onAddMembers?.(channel);
   };
 
   return (
     <div
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => {
-        setHovered(false);
-        setMenuOpen(false);
-      }}
+      onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
       className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors relative ${
         active ? "bg-blue-50" : "hover:bg-slate-50"
       }`}
@@ -369,7 +374,6 @@ function ChannelItem({ channel, active, onClick, unread }) {
         {channel.displayName || channel.name}
       </span>
 
-      {/* ⚠️  Bug fix #2: show on active OR hovered */}
       {showActions && (
         <div className="flex gap-0.5 ml-auto" onClick={(e) => e.stopPropagation()}>
           <button
@@ -395,14 +399,11 @@ function ChannelItem({ channel, active, onClick, unread }) {
             />
           </button>
 
-          {/* Three-dots menu — hidden for #general */}
+          {/* Three-dots menu */}
           {!isGeneral && (
             <div className="relative">
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen((p) => !p);
-                }}
+                onClick={(e) => { e.stopPropagation(); setMenuOpen((p) => !p); }}
                 title="More"
                 className="w-4.5 h-4.5 flex items-center justify-center bg-transparent border-none cursor-pointer rounded p-0"
               >
@@ -410,16 +411,35 @@ function ChannelItem({ channel, active, onClick, unread }) {
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 top-5 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[130px] overflow-hidden">
-                  {/* Only show Leave for channels where the user is a member */}
-                  {channel.isMember !== false && (
+                <div className="absolute right-0 top-5 bg-white border border-slate-200 rounded-lg shadow-lg z-50 min-w-[160px] overflow-hidden">
+                  {/* Add Members — only for admins */}
+                  {canAddMembers && (
                     <button
-                      onClick={handleLeave}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors text-left font-inherit"
+                      onClick={handleAddMembers}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-slate-600 bg-transparent border-none cursor-pointer hover:bg-slate-50 transition-colors text-left font-inherit"
                     >
-                      <i className="ti ti-door-exit text-[13px]" />
-                      Leave channel
+                      <i className="ti ti-user-plus text-[13px] text-slate-400" />
+                      Add Members
                     </button>
+                  )}
+
+                  {/* Leave — only for members */}
+                  {channel.isMember !== false && (
+                    <>
+                      {canAddMembers && <div className="h-px bg-slate-100 mx-2" />}
+                      <button
+                        onClick={handleLeave}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors text-left font-inherit"
+                      >
+                        <i className="ti ti-door-exit text-[13px]" />
+                        Leave channel
+                      </button>
+                    </>
+                  )}
+
+                  {/* Fallback if no actions available */}
+                  {!canAddMembers && channel.isMember === false && (
+                    <div className="px-3 py-2 text-[11px] text-slate-400">No actions</div>
                   )}
                 </div>
               )}
@@ -428,7 +448,6 @@ function ChannelItem({ channel, active, onClick, unread }) {
         </div>
       )}
 
-      {/* Unread badge — only show when actions are hidden */}
       {!showActions && unread > 0 && (
         <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0">
           {unread > 99 ? "99+" : unread}
@@ -441,7 +460,7 @@ function ChannelItem({ channel, active, onClick, unread }) {
 // ── DM row ────────────────────────────────────────────────────────────────────
 function DMItem({ dm, active, onClick }) {
   const { user: me } = useAuth();
-  const { dmUnread } = useDM();
+  const { dmUnread }  = useDM();
 
   const other =
     dm.participants?.find((p) => (p.user?._id || p.user) !== me?._id)?.user || {};
@@ -453,7 +472,7 @@ function DMItem({ dm, active, onClick }) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const unread = dmUnread[dm._id] || 0;
+  const unread      = dmUnread[dm._id] || 0;
   const statusClass = STATUS_COLOR[other.status || "offline"];
 
   return (
@@ -498,21 +517,26 @@ function DMItem({ dm, active, onClick }) {
 
 // ── Main sidebar ──────────────────────────────────────────────────────────────
 export default function ChannelSidebar() {
-  const { user } = useAuth();
+  const { user }                                                     = useAuth();
   const { activeWorkspace, channels, activeChannel, selectChannel, myRole } =
     useWorkspace();
-  const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread } = useDM();
+  const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread }  = useDM();
 
-  const [collapsed, setCollapsed] = useState({});
-  const [unreadMap, setUnreadMap] = useState({});
-  const [search, setSearch] = useState("");
-  const [showCreateChannel, setShowCC] = useState(false);
-  const [showNewDM, setShowDM] = useState(false);
+  const [collapsed, setCollapsed]       = useState({});
+  const [unreadMap, setUnreadMap]       = useState({});
+  const [search, setSearch]             = useState("");
+  const [showCreateChannel, setShowCC]  = useState(false);
+  const [showNewDM, setShowDM]          = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
-  const [showMembers, setShowMembers] = useState(false);
+  const [showMembers, setShowMembers]   = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showLeave, setShowLeave] = useState(false);
+  const [showLeave, setShowLeave]       = useState(false);
+  const [showInvite, setShowInvite]     = useState(false);
+
+  // ── State for "Add Members" opened from channel three-dots ────────────────
+  // When set, MembersPanel opens on the "add" tab for that channel.
+  const [addMembersChannel, setAddMembersChannel] = useState(null);
 
   const toggle = (key) => setCollapsed((p) => ({ ...p, [key]: !p[key] }));
 
@@ -529,10 +553,7 @@ export default function ChannelSidebar() {
     };
     socket.on("new:message", onNew);
     socket.on("message:new", onNew);
-    return () => {
-      socket.off("new:message", onNew);
-      socket.off("message:new", onNew);
-    };
+    return () => { socket.off("new:message", onNew); socket.off("message:new", onNew); };
   }, [activeChannel?._id, dms]);
 
   const handleSelectChannel = (ch) => {
@@ -544,7 +565,16 @@ export default function ChannelSidebar() {
         .catch(() => {});
   };
 
-  // ⚠️  Bug fix #5 (sidebar part): hide private channels the user isn't a member of
+  // Handle "Add Members" from channel three-dots:
+  // Switch active channel to that channel if needed, then open MembersPanel on "add" tab.
+  const handleAddMembersFromSidebar = (channel) => {
+    if (activeChannel?._id !== channel._id) {
+      selectChannel(channel);
+    }
+    setAddMembersChannel(channel);
+    setShowMembers(true);
+  };
+
   const publicChannels = channels.filter(
     (c) =>
       (c.type === "public" || (c.type === "private" && c.isMember)) &&
@@ -561,7 +591,7 @@ export default function ChannelSidebar() {
   return (
     <>
       <div className="w-[240px] bg-white flex flex-col border-r border-slate-200 h-screen flex-shrink-0">
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="px-3.5 py-3 flex items-center justify-between border-b border-slate-100 relative">
           <button
             onClick={() => setDropdownOpen((p) => !p)}
@@ -596,11 +626,13 @@ export default function ChannelSidebar() {
               onMembers={() => setShowMembers(true)}
               onSettings={() => setShowSettings(true)}
               onLeave={() => setShowLeave(true)}
+              onInvite={() => setShowInvite(true)}
+              myRole={myRole}
             />
           )}
         </div>
 
-        {/* ── Search ── */}
+        {/* Search */}
         <div className="mx-2.5 my-2 relative">
           <i className="ti ti-search absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-blue-400 pointer-events-none" />
           <input
@@ -619,7 +651,7 @@ export default function ChannelSidebar() {
           )}
         </div>
 
-        {/* ── Nav ── */}
+        {/* Nav */}
         <div className="flex-1 overflow-y-auto py-1">
           {/* Favorites */}
           {favoriteChannels.length > 0 && (
@@ -637,6 +669,8 @@ export default function ChannelSidebar() {
                     active={activeChannel?._id === ch._id}
                     unread={unreadMap[ch._id] || 0}
                     onClick={() => handleSelectChannel(ch)}
+                    onAddMembers={handleAddMembersFromSidebar}
+                    myRole={myRole}
                   />
                 ))}
             </div>
@@ -660,6 +694,8 @@ export default function ChannelSidebar() {
                   active={activeChannel?._id === ch._id}
                   unread={unreadMap[ch._id] || 0}
                   onClick={() => handleSelectChannel(ch)}
+                  onAddMembers={handleAddMembersFromSidebar}
+                  myRole={myRole}
                 />
               ))}
             {!collapsed.channels && filtered.length === 0 && search && (
@@ -703,22 +739,30 @@ export default function ChannelSidebar() {
         </div>
       </div>
 
-      {/* ── Modals ── */}
+      {/* Modals */}
       {showCreateChannel && <CreateChannelModal open onClose={() => setShowCC(false)} />}
-      {showNewDM && <NewDMModal open onClose={() => setShowDM(false)} />}
-      {showCreateTeam && (
-        <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />
+      {showNewDM         && <NewDMModal open onClose={() => setShowDM(false)} />}
+      {showCreateTeam    && <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />}
+      {showSettings      && <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />}
+      {showLeave         && <LeaveWorkspaceModal onClose={() => setShowLeave(false)} />}
+
+      {/* Invite Link Modal */}
+      {showInvite && activeWorkspace && (
+        <InviteLinkModal
+          workspace={activeWorkspace}
+          onClose={() => setShowInvite(false)}
+        />
       )}
-      {showSettings && (
-        <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />
-      )}
-      {showLeave && <LeaveWorkspaceModal onClose={() => setShowLeave(false)} />}
+
+      {/* Members Panel — pass initialTab="add" when opened from sidebar three-dots */}
       {showMembers && (
         <MembersPanel
           open={showMembers}
-          onClose={() => setShowMembers(false)}
+          onClose={() => { setShowMembers(false); setAddMembersChannel(null); }}
+          initialTab={addMembersChannel ? "add" : "members"}
           onOpenDM={(targetUser) => {
             setShowMembers(false);
+            setAddMembersChannel(null);
             openDMWithUser(targetUser);
           }}
         />

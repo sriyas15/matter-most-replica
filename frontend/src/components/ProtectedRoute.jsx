@@ -6,11 +6,11 @@ export default function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1a1a2a]">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex gap-2">
-          <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce"></span>
-          <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-          <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+          <span className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></span>
+          <span className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+          <span className="w-2 h-2 bg-blue-600 rounded-full animate-bounce [animation-delay:0.4s]"></span>
         </div>
       </div>
     );
