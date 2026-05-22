@@ -5,14 +5,12 @@ let socket = null;
 export const getSocket = () => socket;
 
 export const connectSocket = () => {
-  // FIX: was `socket?.connected` — this allowed a second io() call while the
-  // first socket was still in the CONNECTING state, overwriting the module var.
-  // Now we return the existing socket regardless of its connection state.
+  
   if (socket) return socket;
 
   const token = localStorage.getItem("accessToken");
 
-  socket = io(import.meta.env.VITE_SOCKET_URL || "https://matter-most-replica.onrender.com", {
+  socket = io(import.meta.env.VITE_SOCKET_URL, {
     auth: { token },
     transports: ["websocket"],
     reconnectionAttempts: 5,

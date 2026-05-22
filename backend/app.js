@@ -6,13 +6,12 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
-
 import apiRoutes from "./routes/index.js";
 import { errorHandler, notFound } from "./middlewares/errorMiddleware.js";
 
 dotenv.config({ path: "backend/.env" });
 const app = express();
-
+console.log(process.env.JWT_SECRET)
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(helmet());
 
@@ -20,8 +19,8 @@ app.use(helmet());
 console.log(process.env.CLIENT_URL)
 app.use(
   cors({
-    origin: "https://matter-most-replica.vercel.app",//"http://localhost:3000",//https://matter-most-replica.vercel.app
-    credentials: true,           // allow cookies (refresh token)
+    origin: process.env.CLIENT_URL,
+    credentials: true,           
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })

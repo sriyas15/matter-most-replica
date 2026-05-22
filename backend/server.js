@@ -1,12 +1,9 @@
-import dotenv from "dotenv";
 import http from "http";
 import app from "./app.js";
 import { connectDB } from "./config/db.js";
 import { initSocket } from "./socket/index.js";
 
-dotenv.config({ path: "backend/.env" });
-
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 const start = async () => {

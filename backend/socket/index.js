@@ -9,11 +9,11 @@ import { registerMeetingHandlers } from "./handlers/meetingHandler.js";
 import { registerPresence } from "./presence.js";
 
 let io;
-
+console.log(process.env.CLIENT_URL)
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || "https://matter-most-replica.vercel.app",
+      origin: process.env.CLIENT_URL,
       methods: ["GET", "POST","PUT", "DELETE"],
       credentials: true,
     },
