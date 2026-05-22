@@ -1,12 +1,18 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
-import api from "../lib/api";
+import api, {
+  getAccessToken,
+  setAccessToken,
+  clearAccessToken,
+  isTokenExpiredOrExpiring,
+  refreshAccessToken,
+} from "../lib/api";
 import { connectSocket, disconnectSocket } from "../lib/socket/socket";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]           = useState(null);
-  const [loading, setLoading]     = useState(true);
+  const [user, setUser]               = useState(null);
+  const [loading, setLoading]         = useState(true);
   const [socketReady, setSocketReady] = useState(false);
 
   const initSocket = () => {
@@ -25,25 +31,40 @@ export function AuthProvider({ children }) {
       socket.once("connect", () => setSocketReady(true));
     }
 
-    // If it disconnects and reconnects, keep socketReady true
     socket.on("reconnect", () => setSocketReady(true));
-
     return socket;
   };
 
-  // Restore session
+  // ── Restore session on mount ──────────────────────────────────────────────
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) { setLoading(false); return; }
-
     async function restoreSession() {
       try {
+        const token = getAccessToken();
+        if (!token) return;
+
+        // ── Proactive refresh BEFORE hitting /users/me ──────────────────────
+        // This is safe to await here (not inside an axios interceptor).
+        // If the token expires in the next 30s, refresh it now so the
+        // subsequent /users/me call never hits a 401 in the first place.
+        if (isTokenExpiredOrExpiring(token, 30)) {
+          try {
+            await refreshAccessToken();
+          } catch {
+            // Refresh token itself is expired — clear and go to login
+            clearAccessToken();
+            return;
+          }
+        }
+
         const { data } = await api.get("/users/me");
         setUser({ ...data.data, status: "online" });
         initSocket();
-      } catch {
-        localStorage.removeItem("accessToken");
-        setUser(null);
+      } catch (err) {
+        // Only wipe the token on a real auth failure, not a network blip
+        if (err.response?.status === 401) {
+          clearAccessToken();
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -54,7 +75,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
-    localStorage.setItem("accessToken", data.accessToken);
+    setAccessToken(data.accessToken);
     setUser({ ...data.user, status: "online" });
     initSocket();
     return data.user;
@@ -62,7 +83,7 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (payload) => {
     const { data } = await api.post("/auth/register", payload);
-    localStorage.setItem("accessToken", data.accessToken);
+    setAccessToken(data.accessToken);
     setUser({ ...data.user, status: "online" });
     initSocket();
     return data.user;
@@ -70,7 +91,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(async () => {
     try { await api.post("/auth/logout"); } catch {}
-    localStorage.removeItem("accessToken");
+    clearAccessToken();
     setUser(null);
     setSocketReady(false);
     disconnectSocket();
