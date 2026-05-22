@@ -12,7 +12,7 @@ export const connectSocket = () => {
 
   socket = io(import.meta.env.VITE_SOCKET_URL, {
     auth: { token },
-    // transports: ["websocket"],
+    transports: ["websocket"],
     reconnectionAttempts: 5,
     reconnectionDelay: 1000,
   });
