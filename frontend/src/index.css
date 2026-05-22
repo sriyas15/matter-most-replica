@@ -23,3 +23,37 @@ html, body, #root {
 
 /* Reset button */
 button { font-family: inherit; }
+
+/* Styles for rendered HTML message content */
+.message-content strong,
+.message-content b       { font-weight: 600; }
+.message-content em,
+.message-content i       { font-style: italic; }
+.message-content s       { text-decoration: line-through; }
+
+.message-content ul      { list-style: disc;    padding-left: 1.25rem; margin: 2px 0; }
+.message-content ol      { list-style: decimal; padding-left: 1.25rem; margin: 2px 0; }
+.message-content li      { margin: 1px 0; }
+
+.message-content blockquote {
+  border-left: 3px solid #cbd5e1;
+  padding-left: 0.75rem;
+  color: #64748b;
+  margin: 2px 0;
+}
+
+.message-content code {
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+  color: #1d4ed8;
+  border: 1px solid #dbeafe;
+}
+
+.message-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.message-content a:hover { color: #1d4ed8; }

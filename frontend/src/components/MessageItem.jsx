@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useWorkspace } from "../context/WorkspaceContext";
 import api from "../lib/api";
@@ -11,18 +11,82 @@ function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function renderText(raw = "") {
-  const parts = raw.split(/(`[^`]+`)/g);
-  return parts.map((part, i) => {
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return (
-        <code key={i} className="bg-blue-50 px-1 py-0.5 rounded text-[12px] font-mono text-blue-700 border border-blue-100">
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    return part;
-  });
+function MessageContent({ text = "" }) {
+  const isHTML = /<[a-z][\s\S]*>/i.test(text);
+
+  if (isHTML) {
+    return (
+      <div
+        className="text-[13px] text-slate-700 leading-relaxed break-words message-content"
+        dangerouslySetInnerHTML={{ __html: text }}
+      />
+    );
+  }
+
+  const parts = text.split(/(`[^`]+`)/g);
+  return (
+    <p className="text-[13px] text-slate-700 leading-relaxed break-words">
+      {parts.map((part, i) =>
+        part.startsWith("`") && part.endsWith("`") ? (
+          <code key={i} className="bg-blue-50 px-1 py-0.5 rounded text-[12px] font-mono text-blue-700 border border-blue-100">
+            {part.slice(1, -1)}
+          </code>
+        ) : (
+          part
+        )
+      )}
+    </p>
+  );
+}
+
+// ─── Download helper ──────────────────────────────────────────────────────────
+
+async function downloadFile(url, filename) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(blobUrl);
+  } catch {
+    // fallback if CORS blocks the fetch (e.g. un-configured S3 bucket)
+    window.open(url, "_blank");
+  }
+}
+
+// ─── Image attachment with hover download overlay ────────────────────────────
+
+function AttachmentImage({ att }) {
+  const [hovered, setHovered] = useState(false);
+  const filename = att.filename || att.url.split("/").pop().split("?")[0] || "image";
+
+  return (
+    <div
+      className="relative inline-block"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <img
+        src={att.url}
+        alt={filename}
+        className="max-w-[320px] max-h-[260px] rounded-lg object-cover border border-slate-200 block"
+      />
+      {hovered && (
+        <button
+          onClick={() => downloadFile(att.url, filename)}
+          title={`Download ${filename}`}
+          className="absolute top-2 left-3 w-7 h-7 flex items-center justify-center rounded-md bg-black/60 hover:bg-black/80 text-white border-none cursor-pointer transition-colors"
+        >
+          <i className="ti ti-download text-[14px]" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 // ─── Attachment renderer ──────────────────────────────────────────────────────
@@ -34,15 +98,7 @@ function MessageAttachments({ attachments = [] }) {
     <div className="flex flex-col gap-1.5 mt-1">
       {attachments.map((att, i) => {
         if (att.type === "image") {
-          return (
-            <a key={i} href={att.url} target="_blank" rel="noopener noreferrer" className="inline-block">
-              <img
-                src={att.url}
-                alt={att.filename || "image"}
-                className="max-w-[320px] max-h-[260px] rounded-lg object-cover border border-slate-200 hover:opacity-90 transition-opacity"
-              />
-            </a>
-          );
+          return <AttachmentImage key={i} att={att} />;
         }
 
         if (att.type === "video") {
@@ -66,33 +122,30 @@ function MessageAttachments({ attachments = [] }) {
           );
         }
 
-        // Document / archive / other
+        // Docs / generic files
         const sizeLabel = att.size
           ? att.size > 1048576
             ? `${(att.size / 1048576).toFixed(1)} MB`
             : `${(att.size / 1024).toFixed(0)} KB`
           : null;
 
+        const filename = att.filename || att.url.split("/").pop().split("?")[0] || "download";
+
         return (
-          <a
+          <button
             key={i}
-            href={att.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            download={att.filename}
-            className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors max-w-[280px]"
+            onClick={() => downloadFile(att.url, filename)}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors max-w-[280px] cursor-pointer text-left"
           >
             <i className="ti ti-file-text text-[16px] text-blue-500 flex-shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-[12px] font-medium text-slate-700 truncate">
-                {att.filename || "Download file"}
+                {filename}
               </span>
-              {sizeLabel && (
-                <span className="text-[10px] text-slate-400">{sizeLabel}</span>
-              )}
+              {sizeLabel && <span className="text-[10px] text-slate-400">{sizeLabel}</span>}
             </div>
             <i className="ti ti-download text-[13px] text-slate-400 ml-auto flex-shrink-0" />
-          </a>
+          </button>
         );
       })}
     </div>
@@ -104,8 +157,8 @@ function MessageAttachments({ attachments = [] }) {
 export default function MessageItem({ message, isConsecutive }) {
   const { user } = useAuth();
   const { activeWorkspace, activeChannel } = useWorkspace();
-  const [hovered, setHovered] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [hovered, setHovered]   = useState(false);
+  const [editing, setEditing]   = useState(false);
   const [editText, setEditText] = useState(message.text || "");
   const [reactions, setReactions] = useState(message.reactions || []);
 
@@ -127,9 +180,7 @@ export default function MessageItem({ message, isConsecutive }) {
 
   const handleDelete = async () => {
     if (!window.confirm("Delete this message?")) return;
-    try {
-      await api.delete(apiBase());
-    } catch {}
+    try { await api.delete(apiBase()); } catch {}
   };
 
   const handleReact = async (emoji) => {
@@ -154,9 +205,7 @@ export default function MessageItem({ message, isConsecutive }) {
       >
         <div className="w-8 shrink-0 flex items-center justify-center">
           {hovered && (
-            <span className="text-[10px] text-slate-400 leading-none whitespace-nowrap">
-              {time}
-            </span>
+            <span className="text-[10px] text-slate-400 leading-none whitespace-nowrap">{time}</span>
           )}
         </div>
 
@@ -173,9 +222,7 @@ export default function MessageItem({ message, isConsecutive }) {
               <div className="flex items-center gap-2 mb-0.5 h-[18px]">
                 {hovered && (
                   <>
-                    {message.isEdited && (
-                      <span className="text-[10px] text-slate-400">(edited)</span>
-                    )}
+                    {message.isEdited && <span className="text-[10px] text-slate-400">(edited)</span>}
                     <MessageActions
                       isMine={isMine}
                       onEdit={() => setEditing(true)}
@@ -185,11 +232,7 @@ export default function MessageItem({ message, isConsecutive }) {
                   </>
                 )}
               </div>
-              {message.text && (
-                <p className="text-[13px] text-slate-700 leading-relaxed break-words">
-                  {renderText(message.text)}
-                </p>
-              )}
+              {message.text && <MessageContent text={message.text} />}
               <MessageAttachments attachments={message.attachments} />
             </>
           )}
@@ -212,9 +255,7 @@ export default function MessageItem({ message, isConsecutive }) {
         <div className="flex items-baseline gap-2 mb-0.5">
           <span className="text-[13px] font-semibold text-slate-800">{name}</span>
           <span className="text-[11px] text-slate-400">{time}</span>
-          {message.isEdited && (
-            <span className="text-[10px] text-slate-400">(edited)</span>
-          )}
+          {message.isEdited && <span className="text-[10px] text-slate-400">(edited)</span>}
           {hovered && !editing && (
             <MessageActions
               isMine={isMine}
@@ -234,11 +275,7 @@ export default function MessageItem({ message, isConsecutive }) {
           />
         ) : (
           <>
-            {message.text && (
-              <p className="text-[13px] text-slate-700 leading-relaxed break-words">
-                {renderText(message.text)}
-              </p>
-            )}
+            {message.text && <MessageContent text={message.text} />}
             <MessageAttachments attachments={message.attachments} />
           </>
         )}
@@ -252,30 +289,66 @@ export default function MessageItem({ message, isConsecutive }) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function EditBox({ value, onChange, onSave, onCancel }) {
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+    el.scrollTop = el.scrollHeight;
+  }, [value]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      onCancel();
+      return;
+    }
+
+    if (e.key === "Enter" && !e.shiftKey) {
+      const el = textareaRef.current;
+      const pos = el.selectionStart;
+      const textBeforeCursor = value.slice(0, pos);
+      const currentLine = textBeforeCursor.split("\n").pop();
+      const match = currentLine.match(/^(\d+)\.\s/);
+
+      if (match) {
+        e.preventDefault();
+        const nextNumber = Number(match[1]) + 1;
+        const insertText = `\n${nextNumber}. `;
+        const newValue = value.slice(0, pos) + insertText + value.slice(pos);
+        onChange(newValue);
+        setTimeout(() => {
+          const cursorPos = pos + insertText.length;
+          el.focus();
+          el.setSelectionRange(cursorPos, cursorPos);
+          el.scrollTop = el.scrollHeight;
+        }, 0);
+        return;
+      }
+
+      e.preventDefault();
+      onSave();
+    }
+  };
+
   return (
     <div>
       <textarea
+        ref={textareaRef}
         autoFocus
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSave(); }
-          if (e.key === "Escape") onCancel();
-        }}
-        className="w-full bg-white border border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-md px-2.5 py-1.5 text-[13px] text-slate-800 outline-none resize-none font-inherit box-border transition-all"
+        onKeyDown={handleKeyDown}
+        className="w-full bg-white border border-blue-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 rounded-md px-2.5 py-1.5 text-[13px] text-slate-800 outline-none resize-none font-inherit box-border transition-all overflow-y-auto"
         rows={2}
+        style={{ minHeight: "3rem" }}
       />
       <div className="flex gap-1.5 mt-1">
-        <button
-          onClick={onSave}
-          className="bg-blue-600 hover:bg-blue-700 text-white border-none rounded px-2.5 py-1 text-[11px] cursor-pointer font-inherit transition-colors"
-        >
+        <button onClick={onSave} className="bg-blue-600 hover:bg-blue-700 text-white border-none rounded px-2.5 py-1 text-[11px] cursor-pointer font-inherit transition-colors">
           Save
         </button>
-        <button
-          onClick={onCancel}
-          className="bg-slate-100 hover:bg-slate-200 text-slate-500 border-none rounded px-2.5 py-1 text-[11px] cursor-pointer font-inherit transition-colors"
-        >
+        <button onClick={onCancel} className="bg-slate-100 hover:bg-slate-200 text-slate-500 border-none rounded px-2.5 py-1 text-[11px] cursor-pointer font-inherit transition-colors">
           Cancel
         </button>
       </div>
@@ -315,22 +388,13 @@ function MessageActions({ isMine, onEdit, onDelete, onReact }) {
 
   return (
     <div className="flex gap-0.5 bg-white border border-slate-200 shadow-sm rounded-md px-1 py-0.5 shrink-0 self-center">
-
-      {/* React */}
       <div className="relative">
-        <ActionBtn
-          icon="ti-mood-smile"
-          label="React"
-          onClick={() => { setEmojiOpen((p) => !p); setDotsOpen(false); }}
-        />
+        <ActionBtn icon="ti-mood-smile" label="React" onClick={() => { setEmojiOpen((p) => !p); setDotsOpen(false); }} />
         {emojiOpen && (
           <div className="absolute bottom-[110%] left-0 bg-white border border-slate-200 shadow-lg rounded-lg p-1.5 flex gap-0.5 z-50">
             {QUICK_EMOJIS.map((e) => (
-              <button
-                key={e}
-                onClick={() => { onReact(e); setEmojiOpen(false); }}
-                className="bg-transparent border-none text-lg cursor-pointer px-1 py-0.5 rounded hover:bg-slate-100 transition-colors"
-              >
+              <button key={e} onClick={() => { onReact(e); setEmojiOpen(false); }}
+                className="bg-transparent border-none text-lg cursor-pointer px-1 py-0.5 rounded hover:bg-slate-100 transition-colors">
                 {e}
               </button>
             ))}
@@ -338,30 +402,19 @@ function MessageActions({ isMine, onEdit, onDelete, onReact }) {
         )}
       </div>
 
-      {/* Three dots → edit & delete */}
       <div className="relative">
-        <ActionBtn
-          icon="ti-dots"
-          label="More"
-          onClick={() => { setDotsOpen((p) => !p); setEmojiOpen(false); }}
-        />
+        <ActionBtn icon="ti-dots" label="More" onClick={() => { setDotsOpen((p) => !p); setEmojiOpen(false); }} />
         {dotsOpen && (
           <div className="absolute bottom-[110%] right-0 bg-white border border-slate-200 shadow-lg rounded-lg overflow-hidden z-50 min-w-[130px]">
             {isMine ? (
               <>
-                <button
-                  onClick={() => { onEdit(); setDotsOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-slate-600 bg-transparent border-none cursor-pointer hover:bg-slate-50 transition-colors text-left font-inherit"
-                >
-                  <i className="ti ti-pencil text-[13px] text-slate-400" />
-                  Edit
+                <button onClick={() => { onEdit(); setDotsOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-slate-600 bg-transparent border-none cursor-pointer hover:bg-slate-50 transition-colors text-left font-inherit">
+                  <i className="ti ti-pencil text-[13px] text-slate-400" /> Edit
                 </button>
-                <button
-                  onClick={() => { onDelete(); setDotsOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors text-left font-inherit"
-                >
-                  <i className="ti ti-trash text-[13px] text-red-400" />
-                  Delete
+                <button onClick={() => { onDelete(); setDotsOpen(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors text-left font-inherit">
+                  <i className="ti ti-trash text-[13px] text-red-400" /> Delete
                 </button>
               </>
             ) : (
@@ -376,11 +429,8 @@ function MessageActions({ isMine, onEdit, onDelete, onReact }) {
 
 function ActionBtn({ icon, label, onClick, className = "" }) {
   return (
-    <button
-      title={label}
-      onClick={onClick}
-      className={`w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 text-[14px] cursor-pointer border-none bg-transparent hover:bg-blue-50 transition-colors ${className}`}
-    >
+    <button title={label} onClick={onClick}
+      className={`w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-blue-600 text-[14px] cursor-pointer border-none bg-transparent hover:bg-blue-50 transition-colors ${className}`}>
       <i className={`ti ${icon}`} />
     </button>
   );

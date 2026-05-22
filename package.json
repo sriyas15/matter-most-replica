@@ -2,13 +2,13 @@
   "name": "mattermost-dev",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "client": "cd frontend && npm run dev",
     "server": "nodemon backend/server.js",
     "start": "concurrently \"npm run server\" \"npm run client\"",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
-  "type": "module",
   "author": "",
   "license": "ISC",
   "description": "",

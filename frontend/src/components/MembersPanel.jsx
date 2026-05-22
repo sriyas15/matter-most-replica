@@ -43,7 +43,7 @@ function MemberAvatar({ user, size = 32 }) {
 }
 
 // ── Member row ────────────────────────────────────────────────────────────────
-function MemberRow({ member, onOpenDM, onViewProfile }) {
+function MemberRow({ member, onOpenDM, onViewProfile, isMe }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -59,7 +59,11 @@ function MemberRow({ member, onOpenDM, onViewProfile }) {
         </div>
         <div className="text-[11px] text-slate-400">@{member.username}</div>
       </div>
-      {hovered && (
+      {isMe ? (
+        <span className="text-[11px] text-slate-400 bg-slate-100 border border-slate-200 rounded-md px-2 py-0.5 font-medium">
+          You
+        </span>
+      ) : hovered && (
         <button
           onClick={(e) => { e.stopPropagation(); onOpenDM(member); }}
           title="Send direct message"
@@ -82,41 +86,29 @@ function AddPeopleTab({ workspace, channel, currentMemberIds, onMembersAdded }) 
   const [addSuccess, setAddSuccess] = useState("");
   const debounceRef                 = useRef(null);
 
-  // ── FIX: currentMemberIds are already plain strings — search all workspace
-  //    members and filter out those already in the channel client-side.
   useEffect(() => {
     clearTimeout(debounceRef.current);
-
     if (!workspace) { setSearchRes([]); return; }
-
     debounceRef.current = setTimeout(async () => {
       try {
-        // ── FIX: correct URL — mounted at /users, so just /search suffix ───
-        // ── Also always send q (at least one char) because the controller  ──
-        // ── requires it. Use a broad wildcard when the box is empty so we  ──
-        // ── see everyone on tab open.                                       ──
         const q = searchQ.trim() || " ";
         const { data } = await api.get(
           `/workspaces/${workspace._id}/users/search`,
           { params: { q, limit: 50 } }
         );
-
         const selectedIds = new Set(selected.map((u) => u._id?.toString()));
         const normalizedMemberIds = new Set(
           currentMemberIds.map((id) => (typeof id === "object" ? id.toString() : id))
         );
-
         const filtered = (data.data || []).filter((u) => {
           const uid = u._id?.toString();
           return !normalizedMemberIds.has(uid) && !selectedIds.has(uid);
         });
-
         setSearchRes(filtered);
       } catch {
         setSearchRes([]);
       }
     }, 250);
-
     return () => clearTimeout(debounceRef.current);
   }, [searchQ, workspace?._id, currentMemberIds, selected]);
 
@@ -156,7 +148,6 @@ function AddPeopleTab({ workspace, channel, currentMemberIds, onMembersAdded }) 
 
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-      {/* Search input */}
       <div>
         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
           Search workspace members
@@ -170,8 +161,6 @@ function AddPeopleTab({ workspace, channel, currentMemberIds, onMembersAdded }) 
             className="w-full bg-slate-50 border border-slate-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-md py-2 pl-7 pr-3 text-[12px] text-slate-700 placeholder:text-slate-400 outline-none transition-all box-border"
           />
         </div>
-
-        {/* Results list — always visible, not just when typing */}
         <div className="mt-1.5 bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm max-h-[200px] overflow-y-auto">
           {searchRes.length === 0 ? (
             <p className="text-[12px] text-slate-400 text-center py-3">
@@ -200,7 +189,6 @@ function AddPeopleTab({ workspace, channel, currentMemberIds, onMembersAdded }) 
         </div>
       </div>
 
-      {/* Selected chips */}
       {selected.length > 0 && (
         <div>
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
@@ -260,27 +248,20 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded,
   const [members, setMembers]         = useState([]);
   const [filterQ, setFilterQ]         = useState("");
   const [profileUser, setProfileUser] = useState(null);
-  // ── Allow parent to open directly on "add" tab (from sidebar Add Members btn)
   const [tab, setTab]                 = useState(initialTab || "members");
 
-  // Re-sync tab if parent changes it while panel is open
   useEffect(() => {
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
 
-  // ── FIX: extract user objects AND preserve raw member objects for ID lookup
   const fetchMembers = useCallback(() => {
     if (!activeChannel || !activeWorkspace) return;
     api
       .get(`/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}`)
       .then(({ data }) => {
         const rawMembers = data.data?.members || [];
-        // Each entry is either { user: {...}, role } or a plain user object
         const populated = rawMembers
-          .map((m) => {
-            const userObj = m.user && typeof m.user === "object" ? m.user : m;
-            return userObj;
-          })
+          .map((m) => (m.user && typeof m.user === "object" ? m.user : m))
           .filter(Boolean);
         setMembers(populated);
         onMembersLoaded?.();
@@ -293,7 +274,6 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded,
     fetchMembers();
   }, [open, activeChannel?._id, activeWorkspace?._id]);
 
-  // Real-time socket sync
   useEffect(() => {
     if (!open) return;
     const socket = getSocket();
@@ -319,7 +299,6 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded,
     (m.displayName || m.username || "").toLowerCase().includes(filterQ.toLowerCase())
   );
 
-  // ── FIX: extract IDs as plain strings for reliable comparison in AddPeopleTab
   const currentMemberIds = members.map((m) => m._id?.toString?.() ?? m._id);
 
   if (!open) return null;
@@ -385,6 +364,7 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded,
                 <MemberRow
                   key={m._id}
                   member={m}
+                  isMe={m._id === me?._id}
                   onOpenDM={handleOpenDM}
                   onViewProfile={handleViewProfile}
                 />
