@@ -11,24 +11,34 @@ function formatTime(dateStr) {
   return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function MessageContent({ text = "" }) {
-  const isHTML = /<[a-z][\s\S]*>/i.test(text);
+function MessageContent({ text }) {
+  // ensure text is always a string
+  const safeText =
+    typeof text === "string"
+      ? text
+      : text?.text || text?.content || "";
+
+  const isHTML = /<[a-z][\s\S]*>/i.test(safeText);
 
   if (isHTML) {
     return (
       <div
         className="text-[13px] text-slate-700 leading-relaxed break-words message-content"
-        dangerouslySetInnerHTML={{ __html: text }}
+        dangerouslySetInnerHTML={{ __html: safeText }}
       />
     );
   }
 
-  const parts = text.split(/(`[^`]+`)/g);
+  const parts = safeText.split(/(`[^`]+`)/g);
+
   return (
     <p className="text-[13px] text-slate-700 leading-relaxed break-words">
       {parts.map((part, i) =>
         part.startsWith("`") && part.endsWith("`") ? (
-          <code key={i} className="bg-blue-50 px-1 py-0.5 rounded text-[12px] font-mono text-blue-700 border border-blue-100">
+          <code
+            key={i}
+            className="bg-blue-50 px-1 py-0.5 rounded text-[12px] font-mono text-blue-700 border border-blue-100"
+          >
             {part.slice(1, -1)}
           </code>
         ) : (
