@@ -163,9 +163,16 @@ export default function MessageItem({ message, isConsecutive }) {
   const [reactions, setReactions] = useState(message.reactions || []);
 
   const isMine = message.sender?._id === user?._id || message.sender === user?._id;
-  const sender = message.sender || {};
-  const name   = sender.displayName || sender.name || sender.username || "Unknown";
-  const time   = formatTime(message.createdAt || message.timestamp);
+
+  // ── Build the sender object from the message, NOT from the logged-in user ──
+  // message.sender is populated by the server as a user sub-document.
+  // Falling back to an empty object keeps the rest of the render safe.
+  const sender = (message.sender && typeof message.sender === "object")
+    ? message.sender
+    : {};
+
+  const name = sender.displayName || sender.name || sender.username || "Unknown";
+  const time = formatTime(message.createdAt || message.timestamp);
 
   const apiBase = () =>
     `/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}/messages/${message._id}`;
@@ -249,7 +256,13 @@ export default function MessageItem({ message, isConsecutive }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <Avatar user={user} size={32} showStatus />
+      {/*
+        ── FIX: pass `sender` (the message author) to Avatar, NOT `user`
+           (the logged-in user). Previously every message row showed the
+           current user's avatar and live status dot instead of the actual
+           sender's avatar and status.
+      */}
+      <Avatar user={sender} size={32} showStatus />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 mb-0.5">

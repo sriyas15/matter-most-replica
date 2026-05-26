@@ -218,8 +218,165 @@ function LeaveWorkspaceModal({ onClose }) {
   );
 }
 
+// ── Transfer Ownership Modal ──────────────────────────────────────────────────
+// Lets the workspace owner hand off ownership to another member, after which
+// they can leave the workspace normally.
+function TransferOwnershipModal({ onClose }) {
+  const { activeWorkspace, selectWorkspace } = useWorkspace();
+  const { user: me } = useAuth();
+  const [members, setMembers]   = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [loading, setLoading]   = useState(false);
+  const [fetching, setFetching] = useState(true);
+  const [error, setError]       = useState("");
+  const [success, setSuccess]   = useState("");
+
+  // Use the user search endpoint (same one AddPeopleTab uses — known to work).
+  // A blank query with a high limit returns all workspace members.
+  // We filter out ourselves client-side so the owner can't transfer to themselves.
+  useEffect(() => {
+    if (!activeWorkspace) return;
+    setFetching(true);
+    setError("");
+    api
+      .get(`/workspaces/${activeWorkspace._id}/users/search`, {
+        params: { q: "", limit: 100 },
+      })
+      .then(({ data }) => {
+        const all = data.data || [];
+        // Exclude the current user (the owner doing the transfer)
+        const others = all.filter(
+          (u) => u._id?.toString() !== me?._id?.toString()
+        );
+        setMembers(others);
+      })
+      .catch(() => setError("Could not load members"))
+      .finally(() => setFetching(false));
+  }, [activeWorkspace?._id, me?._id]);
+
+  const handleTransfer = async () => {
+    if (!selected) return;
+    setLoading(true);
+    setError("");
+    try {
+      await api.patch(`/workspaces/${activeWorkspace._id}/transfer-ownership`, {
+        newOwnerId: selected,
+      });
+      // Update local workspace context so the rail / dropdown reflect the new role
+      selectWorkspace({ ...activeWorkspace, myRole: "admin" });
+      setSuccess("Ownership transferred. You are now an admin.");
+      setTimeout(() => { onClose(); }, 1800);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to transfer ownership");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-[300]"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl w-full max-w-sm p-6 shadow-xl border border-slate-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-[15px] font-semibold text-slate-800">Transfer Ownership</span>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-600 text-lg p-1 rounded-md hover:bg-slate-100 border-none bg-transparent cursor-pointer transition-colors"
+          >
+            <i className="ti ti-x" />
+          </button>
+        </div>
+
+        {/* Warning banner */}
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 mb-4">
+          <i className="ti ti-alert-triangle text-amber-500 text-[15px] mt-0.5 flex-shrink-0" />
+          <p className="text-[12px] text-amber-700 leading-relaxed">
+            You will become an <strong>admin</strong> after this. The new owner will have full
+            control of this workspace. This cannot be undone by you.
+          </p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-3 py-2 text-xs mb-3">
+            {error}
+          </div>
+        )}
+        {success && (
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg px-3 py-2 text-[12px] flex items-center gap-1.5 mb-3">
+            <i className="ti ti-check text-[13px]" /> {success}
+          </div>
+        )}
+
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
+          Select new owner
+        </p>
+
+        <div className="border border-slate-200 rounded-lg overflow-hidden max-h-[200px] overflow-y-auto mb-5">
+          {fetching ? (
+            <div className="flex items-center justify-center py-6">
+              <span className="w-4 h-4 rounded-full border-2 border-slate-200 border-t-blue-600 animate-spin" />
+            </div>
+          ) : members.length === 0 ? (
+            <p className="text-[12px] text-slate-400 text-center py-4">No other members to transfer to</p>
+          ) : (
+            members.map((m) => (
+              <button
+                key={m._id}
+                onClick={() => setSelected(m._id)}
+                className={`flex items-center gap-2.5 w-full px-3 py-2.5 border-b border-slate-50 last:border-0 text-left cursor-pointer transition-colors border-none ${
+                  selected === m._id ? "bg-blue-50" : "bg-transparent hover:bg-slate-50"
+                }`}
+              >
+                {/* Mini avatar */}
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 overflow-hidden"
+                  style={{ background: m.avatarColor || "#2563eb" }}
+                >
+                  {m.avatar
+                    ? <img src={m.avatar} alt="" className="w-full h-full object-cover" />
+                    : (m.displayName || m.username || "?").slice(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12px] font-medium text-slate-700 truncate">
+                    {m.displayName || m.username}
+                  </div>
+                  <div className="text-[10px] text-slate-400">@{m.username}</div>
+                </div>
+                {selected === m._id && (
+                  <i className="ti ti-check text-blue-600 text-[13px] flex-shrink-0" />
+                )}
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors font-medium border-none cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleTransfer}
+            disabled={!selected || loading || !!success}
+            className="px-4 py-2 text-sm text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors font-medium border-none cursor-pointer"
+          >
+            {loading ? "Transferring…" : "Transfer Ownership"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Workspace name dropdown ───────────────────────────────────────────────────
-function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLeave, onInvite, myRole }) {
+function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLeave, onInvite, onTransferOwnership, myRole }) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -231,17 +388,22 @@ function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLea
   }, [onClose]);
 
   const items = [
-    { icon: "ti-users",       label: "Members",      action: onMembers,    danger: false },
+    { icon: "ti-users",       label: "Members",       action: onMembers,    danger: false },
     // Invite People — only for admins/owners who can generate invite links
     ...( ["owner", "admin"].includes(myRole)
       ? [{ icon: "ti-user-plus", label: "Invite People", action: onInvite, danger: false }]
       : []
     ),
-    { icon: "ti-plus",        label: "Create Team",  action: onCreateTeam, danger: false },
+    { icon: "ti-plus",        label: "Create Team",   action: onCreateTeam, danger: false },
     { divider: true },
-    { icon: "ti-settings",    label: "Team Settings", action: onSettings,  danger: false },
+    { icon: "ti-settings",    label: "Team Settings", action: onSettings,   danger: false },
+    // Transfer Ownership — only the owner sees this
+    ...( myRole === "owner"
+      ? [{ icon: "ti-transfer-in", label: "Transfer Ownership", action: onTransferOwnership, danger: false }]
+      : []
+    ),
     { divider: true },
-    { icon: "ti-door-exit",   label: "Leave Team",   action: onLeave,      danger: true },
+    { icon: "ti-door-exit",   label: "Leave Team",    action: onLeave,      danger: true },
   ];
 
   return (
@@ -533,9 +695,9 @@ export default function ChannelSidebar() {
   const [showSettings, setShowSettings] = useState(false);
   const [showLeave, setShowLeave]       = useState(false);
   const [showInvite, setShowInvite]     = useState(false);
+  const [showTransferOwnership, setShowTransferOwnership] = useState(false); // ← NEW
 
   // ── State for "Add Members" opened from channel three-dots ────────────────
-  // When set, MembersPanel opens on the "add" tab for that channel.
   const [addMembersChannel, setAddMembersChannel] = useState(null);
 
   const toggle = (key) => setCollapsed((p) => ({ ...p, [key]: !p[key] }));
@@ -565,8 +727,6 @@ export default function ChannelSidebar() {
         .catch(() => {});
   };
 
-  // Handle "Add Members" from channel three-dots:
-  // Switch active channel to that channel if needed, then open MembersPanel on "add" tab.
   const handleAddMembersFromSidebar = (channel) => {
     if (activeChannel?._id !== channel._id) {
       selectChannel(channel);
@@ -627,6 +787,7 @@ export default function ChannelSidebar() {
               onSettings={() => setShowSettings(true)}
               onLeave={() => setShowLeave(true)}
               onInvite={() => setShowInvite(true)}
+              onTransferOwnership={() => setShowTransferOwnership(true)}
               myRole={myRole}
             />
           )}
@@ -746,6 +907,11 @@ export default function ChannelSidebar() {
       {showSettings      && <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />}
       {showLeave         && <LeaveWorkspaceModal onClose={() => setShowLeave(false)} />}
 
+      {/* Transfer Ownership Modal — owner only */}
+      {showTransferOwnership && (
+        <TransferOwnershipModal onClose={() => setShowTransferOwnership(false)} />
+      )}
+
       {/* Invite Link Modal */}
       {showInvite && activeWorkspace && (
         <InviteLinkModal
@@ -754,7 +920,7 @@ export default function ChannelSidebar() {
         />
       )}
 
-      {/* Members Panel — pass initialTab="add" when opened from sidebar three-dots */}
+      {/* Members Panel */}
       {showMembers && (
         <MembersPanel
           open={showMembers}

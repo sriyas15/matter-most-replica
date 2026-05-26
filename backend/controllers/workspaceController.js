@@ -304,3 +304,38 @@ export const archiveWorkspace = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// ── PATCH /api/workspaces/:workspaceId/transfer-ownership ─────────────────────
+export const transferOwnership = async (req, res) => {
+  try {
+    const { workspaceId } = req.params;
+    const { newOwnerId } = req.body;
+    const userId = req.user._id;
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace)
+      return res.status(404).json({ success: false, message: "Workspace not found" });
+
+    if (workspace.getMemberRole(userId) !== "owner")
+      return res.status(403).json({ success: false, message: "Only the owner can transfer ownership" });
+
+    const newOwnerMember = workspace.members.find(
+      (m) => m.user.toString() === newOwnerId.toString()
+    );
+    if (!newOwnerMember)
+      return res.status(404).json({ success: false, message: "New owner must be a workspace member" });
+
+    // Demote current owner to admin, promote new owner
+    workspace.members = workspace.members.map((m) => {
+      if (m.user.toString() === userId.toString()) return { ...m.toObject(), role: "admin" };
+      if (m.user.toString() === newOwnerId.toString()) return { ...m.toObject(), role: "owner" };
+      return m;
+    });
+    workspace.owner = newOwnerId;
+    await workspace.save();
+
+    res.json({ success: true, message: "Ownership transferred" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

@@ -44,13 +44,14 @@ export default function WorkspaceSidebar() {
   const { unreadCount, unreadMentions } = useNotifications();
   const navigate = useNavigate();
 
-  const [active, setActive]           = useState("Home");
-  const [showMenu, setShowMenu]       = useState(false);
+  const [active, setActive]             = useState("Home");
+  const [sidebarOpen, setSidebarOpen]   = useState(true);   // ← NEW: toggle channel sidebar
+  const [showMenu, setShowMenu]         = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCreateWS, setShowCreateWS] = useState(false);
-  const [showNotifs, setShowNotifs]   = useState(false);
+  const [showNotifs, setShowNotifs]     = useState(false);
   const [showMentions, setShowMentions] = useState(false);
-  const [showNewDM, setShowNewDM]     = useState(false);
+  const [showNewDM, setShowNewDM]       = useState(false);
 
   if (loading || !user) return null;
 
@@ -85,6 +86,15 @@ export default function WorkspaceSidebar() {
     setShowNewDM(true);
   };
 
+  // ── Toggle the channel sidebar. When closing, also clear panels so the
+  //    rail doesn't stay highlighted in an inconsistent state.
+  const toggleSidebar = () => {
+    setSidebarOpen((p) => !p);
+    setActive("Home");
+    setShowNotifs(false);
+    setShowMentions(false);
+  };
+
   const STATUS_OPTIONS = [
     { value: "online",  label: "Online",          dot: "bg-emerald-500" },
     { value: "away",    label: "Away",             dot: "bg-amber-400" },
@@ -93,16 +103,16 @@ export default function WorkspaceSidebar() {
   ];
 
   return (
-    <div className="flex h-screen relative">
+    <div className="flex flex-shrink-0">
       {/* ── Icon Rail ── */}
-      <aside className="flex flex-col items-center w-14 py-2 gap-1 flex-shrink-0 bg-white border-r border-slate-200">
+      <aside className="flex flex-col items-center w-14 py-2 gap-1 flex-shrink-0 bg-white border-r border-slate-200 h-screen">
 
-        {/* Home */}
+        {/* Home — toggles the channel sidebar */}
         <RailIcon
           icon="ti-layout-sidebar"
-          label="Home"
-          active={active === "Home"}
-          onClick={() => { setActive("Home"); setShowNotifs(false); setShowMentions(false); }}
+          label={sidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
+          active={active === "Home" && sidebarOpen}
+          onClick={toggleSidebar}
         />
         <div className="w-6 h-px my-1 bg-slate-200" />
 
@@ -222,7 +232,8 @@ export default function WorkspaceSidebar() {
         </div>
       </aside>
 
-      <ChannelSidebar />
+      {/* ── Channel sidebar — conditionally rendered by the toggle ── */}
+      {sidebarOpen && <ChannelSidebar />}
 
       {/* Backdrop for avatar menu */}
       {showMenu && (

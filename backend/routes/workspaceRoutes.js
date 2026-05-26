@@ -10,6 +10,7 @@ import {
     updateMemberRole,
     leaveWorkspace,
     archiveWorkspace,
+    transferOwnership 
 } from "../controllers/workspaceController.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import { requireWorkspaceMember, requireWorkspaceRole } from "../middlewares/workspaceMiddleware.js";
@@ -41,5 +42,6 @@ router.delete("/:workspaceId/members/:memberId", requireWorkspaceRole("admin"), 
 router.patch("/:workspaceId/members/:memberId/role", requireWorkspaceRole("owner"), updateMemberRole);
 
 router.use("/:workspaceId/channels", channelRoutes);
+router.patch("/:workspaceId/transfer-ownership", requireWorkspaceRole("owner"), transferOwnership);
 
 export default router;
