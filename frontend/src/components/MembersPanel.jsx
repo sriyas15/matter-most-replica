@@ -42,35 +42,153 @@ function MemberAvatar({ user, size = 32 }) {
   );
 }
 
+// ── Manage dropdown for channel admins ────────────────────────────────────────
+// Shows "Make Admin" / "Remove Admin" and "Remove from channel" for a member.
+function ManageDropdown({ member, onMakeAdmin, onRemoveAdmin, onRemove, onClose }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [onClose]);
+
+  const isAdmin = member.channelRole === "admin";
+
+  return (
+    <div
+      ref={ref}
+      className="absolute right-0 top-7 bg-white border border-slate-200 rounded-lg shadow-lg z-[60] min-w-[170px] overflow-hidden"
+    >
+      {isAdmin ? (
+        <button
+          onClick={() => { onRemoveAdmin(); onClose(); }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-slate-600 bg-transparent border-none cursor-pointer hover:bg-slate-50 transition-colors text-left font-inherit"
+        >
+          <i className="ti ti-shield-off text-[13px] text-slate-400" />
+          Remove Admin
+        </button>
+      ) : (
+        <button
+          onClick={() => { onMakeAdmin(); onClose(); }}
+          className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-slate-600 bg-transparent border-none cursor-pointer hover:bg-slate-50 transition-colors text-left font-inherit"
+        >
+          <i className="ti ti-shield text-[13px] text-blue-500" />
+          Make Admin
+        </button>
+      )}
+      <div className="h-px bg-slate-100 mx-2" />
+      <button
+        onClick={() => { onRemove(); onClose(); }}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[12px] text-red-500 bg-transparent border-none cursor-pointer hover:bg-red-50 transition-colors text-left font-inherit"
+      >
+        <i className="ti ti-user-minus text-[13px]" />
+        Remove from channel
+      </button>
+    </div>
+  );
+}
+
 // ── Member row ────────────────────────────────────────────────────────────────
-function MemberRow({ member, onOpenDM, onViewProfile, isMe }) {
-  const [hovered, setHovered] = useState(false);
+function MemberRow({ member, onOpenDM, onViewProfile, isMe, canManage, onRefresh }) {
+  const { activeWorkspace, activeChannel } = useWorkspace();
+  const [hovered, setHovered]     = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+
+  const isAdmin = member.channelRole === "admin";
+
+  const handleMakeAdmin = async () => {
+    try {
+      await api.patch(
+        `/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}/members/${member._id}/role`,
+        { role: "admin" }
+      );
+      onRefresh();
+    } catch {}
+  };
+
+  const handleRemoveAdmin = async () => {
+    try {
+      await api.patch(
+        `/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}/members/${member._id}/role`,
+        { role: "member" }
+      );
+      onRefresh();
+    } catch {}
+  };
+
+  const handleRemove = async () => {
+    if (!window.confirm(`Remove ${member.displayName || member.username} from this channel?`)) return;
+    try {
+      await api.delete(
+        `/workspaces/${activeWorkspace._id}/channels/${activeChannel._id}/members/${member._id}`
+      );
+      onRefresh();
+    } catch {}
+  };
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="flex items-center gap-2.5 px-4 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
+      onMouseLeave={() => { setHovered(false); setManageOpen(false); }}
+      className="flex items-center gap-2.5 px-4 py-2 cursor-pointer hover:bg-slate-50 transition-colors relative"
       onClick={() => onViewProfile(member)}
     >
       <MemberAvatar user={member} />
+
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] text-slate-700 font-medium truncate">
-          {member.displayName || member.username}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] text-slate-700 font-medium truncate">
+            {member.displayName || member.username}
+          </span>
+          {/* Admin badge */}
+          {isAdmin && (
+            <span className="text-[9px] font-semibold text-blue-600 bg-blue-50 border border-blue-200 rounded px-1 py-0.5 leading-none flex-shrink-0">
+              ADMIN
+            </span>
+          )}
         </div>
         <div className="text-[11px] text-slate-400">@{member.username}</div>
       </div>
+
       {isMe ? (
-        <span className="text-[11px] text-slate-400 bg-slate-100 border border-slate-200 rounded-md px-2 py-0.5 font-medium">
+        <span className="text-[11px] text-slate-400 bg-slate-100 border border-slate-200 rounded-md px-2 py-0.5 font-medium flex-shrink-0">
           You
         </span>
       ) : hovered && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onOpenDM(member); }}
-          title="Send direct message"
-          className="flex items-center gap-1 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-md px-2 py-1 text-blue-600 text-[11px] cursor-pointer transition-colors font-inherit"
-        >
-          <i className="ti ti-message-circle text-[13px]" /> DM
-        </button>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {/* DM button */}
+          <button
+            onClick={(e) => { e.stopPropagation(); onOpenDM(member); }}
+            title="Send direct message"
+            className="flex items-center gap-1 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-md px-2 py-1 text-blue-600 text-[11px] cursor-pointer transition-colors font-inherit"
+          >
+            <i className="ti ti-message-circle text-[13px]" /> DM
+          </button>
+
+          {/* Manage button — only for channel admins and not for the member themselves */}
+          {canManage && (
+            <div className="relative">
+              <button
+                onClick={(e) => { e.stopPropagation(); setManageOpen((p) => !p); }}
+                title="Manage member"
+                className="flex items-center gap-1 bg-slate-50 border border-slate-200 hover:bg-slate-100 rounded-md px-2 py-1 text-slate-600 text-[11px] cursor-pointer transition-colors font-inherit"
+              >
+                Manage <i className="ti ti-chevron-down text-[10px]" />
+              </button>
+
+              {manageOpen && (
+                <ManageDropdown
+                  member={member}
+                  onMakeAdmin={handleMakeAdmin}
+                  onRemoveAdmin={handleRemoveAdmin}
+                  onRemove={handleRemove}
+                  onClose={() => setManageOpen(false)}
+                />
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -240,7 +358,7 @@ function AddPeopleTab({ workspace, channel, currentMemberIds, onMembersAdded }) 
   );
 }
 
-// ── Main panel ────────────────────────────────────────────────────────────────
+// ── Main channel members panel ────────────────────────────────────────────────
 export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded, initialTab }) {
   const { activeWorkspace, activeChannel } = useWorkspace();
   const { user: me } = useAuth();
@@ -254,6 +372,10 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded,
     if (initialTab) setTab(initialTab);
   }, [initialTab]);
 
+  // ── Fetch members — preserve channelRole from the members array ───────────
+  // Previously this mapped m.user and dropped m.role. We now attach
+  // m.role as channelRole on the user object so the row can show the badge
+  // and the Manage dropdown can read it.
   const fetchMembers = useCallback(() => {
     if (!activeChannel || !activeWorkspace) return;
     api
@@ -261,7 +383,12 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded,
       .then(({ data }) => {
         const rawMembers = data.data?.members || [];
         const populated = rawMembers
-          .map((m) => (m.user && typeof m.user === "object" ? m.user : m))
+          .map((m) => {
+            const userObj = m.user && typeof m.user === "object" ? m.user : m;
+            if (!userObj) return null;
+            // Attach the channel-level role so rows can render the ADMIN badge
+            return { ...userObj, channelRole: m.role ?? userObj.channelRole };
+          })
           .filter(Boolean);
         setMembers(populated);
         onMembersLoaded?.();
@@ -285,10 +412,11 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded,
     return () => socket.off("channel:member_updated", handler);
   }, [open, activeChannel?._id, fetchMembers]);
 
-  const myChannelRole = activeChannel?.myRole;
+  // Current user is a channel admin if they have role="admin" in the members list,
+  // or if they're a workspace owner/admin.
+  const myMember = members.find((m) => m._id === me?._id);
   const isChannelAdmin =
-    myChannelRole === "admin" ||
-    members.find((m) => m._id === me?._id)?.role === "admin" ||
+    myMember?.channelRole === "admin" ||
     ["owner", "admin"].includes(activeWorkspace?.myRole);
 
   const handleOpenDM      = (targetUser) => { onOpenDM(targetUser); onClose(); };
@@ -365,8 +493,10 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded,
                   key={m._id}
                   member={m}
                   isMe={m._id === me?._id}
+                  canManage={isChannelAdmin && m._id !== me?._id}
                   onOpenDM={handleOpenDM}
                   onViewProfile={handleViewProfile}
+                  onRefresh={fetchMembers}
                 />
               ))}
             </div>
@@ -399,6 +529,7 @@ export default function MembersPanel({ open, onClose, onOpenDM, onMembersLoaded,
   );
 }
 
+// ── User profile popup ────────────────────────────────────────────────────────
 function UserProfilePopup({ user, onClose, onOpenDM, isMe }) {
   const initials = (user.displayName || user.username || "?")
     .split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();

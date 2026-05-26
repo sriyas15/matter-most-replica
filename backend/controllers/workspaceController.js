@@ -85,8 +85,8 @@ export const getWorkspace = async (req, res) => {
     if (!workspace)
       return res.status(404).json({ success: false, message: "Workspace not found" });
 
-    if (!workspace.isMember(userId))
-      return res.status(403).json({ success: false, message: "Not a member of this workspace" });
+    // if (!workspace.isMember(userId))
+    //   return res.status(403).json({ success: false, message: "Not a member of this workspace" });
 
     res.json({ success: true, data: workspace });
   } catch (err) {

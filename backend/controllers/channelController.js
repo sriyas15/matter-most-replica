@@ -362,3 +362,74 @@ export const markChannelRead = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+export const updateChannelMemberRole = async (req, res) => {
+  try {
+    const { workspaceId, channelId, memberId } = req.params;
+    const { role } = req.body;
+    const requesterId = req.user._id;
+ 
+    const allowed = ["admin", "member"];
+    if (!allowed.includes(role))
+      return res.status(400).json({ success: false, message: "Role must be 'admin' or 'member'" });
+ 
+    const channel = await Channel.findById(channelId);
+    if (!channel)
+      return res.status(404).json({ success: false, message: "Channel not found" });
+ 
+    // Requester must be a channel admin or workspace owner/admin
+    const channelMember   = channel.getMember(requesterId);
+    const workspace       = await Workspace.findById(workspaceId);
+    const wsRole          = workspace?.getMemberRole(requesterId);
+    const isChannelAdmin  = channelMember?.role === "admin";
+    const isWsElevated    = ["owner", "admin"].includes(wsRole);
+ 
+    if (!isChannelAdmin && !isWsElevated)
+      return res.status(403).json({ success: false, message: "Channel admin only" });
+ 
+    // Update the target member's role
+    const target = channel.members.find((m) => m.user.toString() === memberId.toString());
+    if (!target)
+      return res.status(404).json({ success: false, message: "Member not found in channel" });
+ 
+    target.role = role;
+    await channel.save();
+ 
+    res.json({ success: true, message: `Role updated to ${role}` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const removeChannelMember = async (req, res) => {
+  try {
+    const { workspaceId, channelId, memberId } = req.params;
+    const requesterId = req.user._id;
+ 
+    const channel = await Channel.findById(channelId);
+    if (!channel)
+      return res.status(404).json({ success: false, message: "Channel not found" });
+ 
+    const channelMember   = channel.getMember(requesterId);
+    const workspace       = await Workspace.findById(workspaceId);
+    const wsRole          = workspace?.getMemberRole(requesterId);
+    const isChannelAdmin  = channelMember?.role === "admin";
+    const isWsElevated    = ["owner", "admin"].includes(wsRole);
+ 
+    if (!isChannelAdmin && !isWsElevated)
+      return res.status(403).json({ success: false, message: "Channel admin only" });
+ 
+    if (!channel.isMember(memberId))
+      return res.status(400).json({ success: false, message: "User is not a channel member" });
+ 
+    channel.members = channel.members.filter((m) => m.user.toString() !== memberId.toString());
+    await channel.save();
+ 
+    // Notify all clients in the channel room about the updated count
+    emitMemberUpdate(channelId, channel.members.length);
+ 
+    res.json({ success: true, message: "Member removed from channel" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

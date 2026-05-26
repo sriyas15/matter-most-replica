@@ -8,6 +8,7 @@ import CreateChannelModal from "./CreateChannelModal";
 import NewDMModal from "./NewDMModal";
 import CreateWorkspaceModal from "./CreateWorkspaceModal";
 import MembersPanel from "./MembersPanel";
+import WorkspaceMembersPanel from "./WorkspaceMembersPanel";
 import InviteLinkModal from "./InviteLinkModal";
 
 const STATUS_COLOR = {
@@ -691,7 +692,8 @@ export default function ChannelSidebar() {
   const [showNewDM, setShowDM]          = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
-  const [showMembers, setShowMembers]   = useState(false);
+  const [showMembers, setShowMembers]   = useState(false);       // channel members (from ChatHeader)
+  const [showWsMembers, setShowWsMembers] = useState(false);     // workspace members (from dropdown)
   const [showSettings, setShowSettings] = useState(false);
   const [showLeave, setShowLeave]       = useState(false);
   const [showInvite, setShowInvite]     = useState(false);
@@ -783,7 +785,7 @@ export default function ChannelSidebar() {
             <WorkspaceDropdown
               onClose={() => setDropdownOpen(false)}
               onCreateTeam={() => setShowCreateTeam(true)}
-              onMembers={() => setShowMembers(true)}
+              onMembers={() => setShowWsMembers(true)}
               onSettings={() => setShowSettings(true)}
               onLeave={() => setShowLeave(true)}
               onInvite={() => setShowInvite(true)}
@@ -920,7 +922,15 @@ export default function ChannelSidebar() {
         />
       )}
 
-      {/* Members Panel */}
+      {/* Workspace Members Panel — opened from workspace dropdown "Members" */}
+      {showWsMembers && (
+        <WorkspaceMembersPanel
+          open={showWsMembers}
+          onClose={() => setShowWsMembers(false)}
+        />
+      )}
+
+      {/* Channel Members Panel — opened from ChatHeader or channel three-dots */}
       {showMembers && (
         <MembersPanel
           open={showMembers}
