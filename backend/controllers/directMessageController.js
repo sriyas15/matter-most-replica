@@ -4,6 +4,7 @@ import Message from "../models/Message.js";
 import User from "../models/User.js";
 import mongoose from "mongoose";
 import { createNotification } from "./notificationController.js";
+import { decryptMessages } from "../utils/encryption.js";
 
 // ── GET /workspaces/:workspaceId/dms
 // List all DMs for the current user in a workspace
@@ -191,6 +192,8 @@ export const getDMMessages = async (req, res) => {
       .limit(Number(limit))
       .populate("sender", "username displayName avatar avatarColor")
       .lean();
+
+      decryptMessages(messages);
 
     // Update lastOpenedAt
     await DirectMessage.updateOne(

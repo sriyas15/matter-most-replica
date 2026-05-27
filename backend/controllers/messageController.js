@@ -3,6 +3,7 @@ import Channel from "../models/Channel.js";
 import File from "../models/File.js";
 import { createNotification } from "./notificationController.js";
 import { getIO } from "../socket/index.js";
+import { encrypt, decrypt, decryptMessage, decryptMessages } from "../utils/encryption.js";
 
 // ── Resolve File _id strings → Message attachment sub-documents ───────────────
 const buildAttachments = async (attachmentIds = [], workspaceId) => {
@@ -15,7 +16,6 @@ const buildAttachments = async (attachmentIds = [], workspaceId) => {
   }).lean();
 
   return files.map((f) => ({
-    // Message attachmentSchema expects: type, url, filename, mimeType, size, width, height, thumbnailUrl
     type:         f.fileType === "document" || f.fileType === "archive" ? "file" : f.fileType,
     url:          f.url,
     filename:     f.originalName,
@@ -34,7 +34,7 @@ export const sendMessage = async (req, res) => {
     const {
       text,
       parentMessageId,
-      attachments: attachmentIds = [],  // array of File _id strings from frontend
+      attachments: attachmentIds = [],
       mentions        = [],
       channelMentions = [],
     } = req.body;
@@ -67,21 +67,21 @@ export const sendMessage = async (req, res) => {
         return res.status(404).json({ success: false, message: "Parent message not found" });
     }
 
-    // Resolve File IDs → properly shaped attachment sub-documents
     const attachments = await buildAttachments(attachmentIds, workspaceId);
+
+    const plainText = text?.trim() ?? "";
 
     const message = await Message.create({
       channel:        channelId,
       workspace:      workspaceId,
       sender:         userId,
-      text:           text?.trim() ?? "",
+      text:           encrypt(plainText),           // ← stored encrypted
       parentMessage:  parentMessageId || null,
-      attachments,                          // ← sub-documents, not raw IDs
+      attachments,
       mentions,
       channelMentions,
     });
 
-    // Back-link File docs to the created message
     if (attachmentIds.length) {
       await File.updateMany(
         { _id: { $in: attachmentIds } },
@@ -101,14 +101,18 @@ export const sendMessage = async (req, res) => {
     await Channel.findByIdAndUpdate(channelId, {
       lastActivityAt: new Date(),
       lastMessage: {
-        text:   text?.slice(0, 100) ?? (attachments[0]?.filename || ""),
+        text:   plainText.slice(0, 100),            // ← preview stored plain
         sender: userId,
         sentAt: new Date(),
       },
     });
 
+    // Decrypt for the socket payload so clients receive plain text
+    const msgObj = message.toObject();
+    decryptMessage(msgObj);
+
     const io = getIO();
-    io.to(`channel:${channelId}`).emit("message:new", message);
+    io.to(`channel:${channelId}`).emit("message:new", msgObj);
 
     if (mentions?.length) {
       mentions.forEach((mentionedUserId) => {
@@ -120,7 +124,7 @@ export const sendMessage = async (req, res) => {
             actorId:     userId,
             messageId:   message._id,
             channelId,
-            preview:     text?.slice(0, 120) ?? "",
+            preview:     plainText.slice(0, 120),
           });
         }
       });
@@ -136,13 +140,13 @@ export const sendMessage = async (req, res) => {
             actorId:     userId,
             messageId:   message._id,
             channelId,
-            preview:     text?.slice(0, 120) ?? "",
+            preview:     plainText.slice(0, 120),
           });
         }
       });
     }
 
-    res.status(201).json({ success: true, data: message });
+    res.status(201).json({ success: true, data: msgObj });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -172,6 +176,8 @@ export const getMessages = async (req, res) => {
       .populate("sender", "username displayName avatar avatarColor")
       .populate("replyParticipants", "username displayName avatar")
       .lean();
+
+    decryptMessages(messages);                      // ← decrypt all text fields
 
     res.json({
       success: true,
@@ -203,7 +209,12 @@ export const getThread = async (req, res) => {
       .populate("sender", "username displayName avatar avatarColor")
       .lean();
 
-    res.json({ success: true, data: { root, replies } });
+    // Decrypt root (Mongoose doc — convert first) and replies
+    const rootObj = root.toObject();
+    decryptMessage(rootObj);
+    decryptMessages(replies);
+
+    res.json({ success: true, data: { root: rootObj, replies } });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -229,7 +240,8 @@ export const editMessage = async (req, res) => {
     if (message.messageType !== "user")
       return res.status(400).json({ success: false, message: "Cannot edit system messages" });
 
-    message.text     = text.trim();
+    const plainText  = text.trim();
+    message.text     = encrypt(plainText);          // ← stored encrypted
     message.isEdited = true;
     message.editedAt = new Date();
     await message.save();
@@ -239,12 +251,16 @@ export const editMessage = async (req, res) => {
     const io = getIO();
     io.to(`channel:${message.channel}`).emit("message:updated", {
       messageId,
-      text:     message.text,
+      text:     plainText,                          // ← socket receives plain text
       isEdited: true,
       editedAt: message.editedAt,
     });
 
-    res.json({ success: true, data: message });
+    // Return decrypted in response
+    const msgObj = message.toObject();
+    decryptMessage(msgObj);
+
+    res.json({ success: true, data: msgObj });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -381,6 +397,8 @@ export const searchMessages = async (req, res) => {
         .lean(),
       Message.countDocuments(query),
     ]);
+
+    decryptMessages(messages);                      // ← decrypt search results
 
     res.json({
       success:    true,
