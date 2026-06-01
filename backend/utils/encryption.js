@@ -16,10 +16,6 @@ if (!KEY_HEX || KEY_HEX.length !== 64) {
 
 const KEY = Buffer.from(KEY_HEX, "hex");
 
-/**
- * Encrypt plaintext string.
- * Returns "enc:<iv_hex>:<authTag_hex>:<ciphertext_hex>"
- */
 export function encrypt(plaintext) {
     if (!plaintext) return plaintext;               // empty / null pass through
 
@@ -81,7 +77,9 @@ export function decrypt(ciphertext) {
  */
 export function decryptMessage(msg) {
     if (!msg) return msg;
-    if (msg.text !== undefined) msg.text = decrypt(msg.text);
+    if (msg.text !== undefined && typeof msg.text === "string") {
+        msg.text = decrypt(msg.text);
+    }
     return msg;
 }
 

@@ -3,8 +3,8 @@ import dotenv from 'dotenv';
 const ACCESS_SECRET  = process.env.JWT_SECRET;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 
-const ACCESS_EXPIRES  = process.env.JWT_ACCESS_EXPIRES  || "15m";
-const REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES || "7d";
+const ACCESS_EXPIRES  = process.env.JWT_ACCESS_EXPIRES;
+const REFRESH_EXPIRES = process.env.JWT_REFRESH_EXPIRES;
 
 // ── Sign ──────────────────────────────────────────────────────────────────────
 export const signAccessToken = (payload) =>

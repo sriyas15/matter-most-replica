@@ -46,19 +46,22 @@ const processQueue = (error, token = null) => {
 };
 
 // Exported so AuthContext can call it proactively on boot
+// in refreshAccessToken()
 export async function refreshAccessToken() {
-  const { data } = await axios.post(
-    `${import.meta.env.VITE_API_URL}/auth/refresh`,
-    {},
-    { withCredentials: true }
-  );
-
-  // Backend returns { success: true, accessToken: "..." }
-  const newToken = data.accessToken;
-  if (!newToken) throw new Error("No access token in refresh response");
-
-  setAccessToken(newToken);
-  return newToken;
+  try {
+    const { data } = await axios.post(
+      `${import.meta.env.VITE_API_URL}/auth/refresh`,
+      {},
+      { withCredentials: true }
+    );
+    const newToken = data.accessToken;
+    if (!newToken) throw new Error("No access token in refresh response");
+    setAccessToken(newToken);
+    return newToken;
+  } catch (err) {
+    console.error("[refresh] failed:", err.response?.status, err.response?.data);
+    throw err;
+  }
 }
 
 // ── Request interceptor — sync only, just attaches the current token ──────────

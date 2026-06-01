@@ -12,9 +12,9 @@ import WorkspaceMembersPanel from "./WorkspaceMembersPanel";
 import InviteLinkModal from "./InviteLinkModal";
 
 const STATUS_COLOR = {
-  online:  "bg-emerald-500",
-  away:    "bg-amber-400",
-  dnd:     "bg-red-500",
+  online: "bg-emerald-500",
+  away: "bg-amber-400",
+  dnd: "bg-red-500",
   offline: "bg-slate-400",
 };
 
@@ -26,7 +26,7 @@ function WorkspaceSettingsModal({ onClose }) {
     description: activeWorkspace?.description || "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const flash = (msg) => {
@@ -146,7 +146,7 @@ function WorkspaceSettingsModal({ onClose }) {
 function LeaveWorkspaceModal({ onClose }) {
   const { activeWorkspace, workspaces, selectWorkspace } = useWorkspace();
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError] = useState("");
 
   const handleLeave = async () => {
     setLoading(true);
@@ -225,12 +225,12 @@ function LeaveWorkspaceModal({ onClose }) {
 function TransferOwnershipModal({ onClose }) {
   const { activeWorkspace, selectWorkspace } = useWorkspace();
   const { user: me } = useAuth();
-  const [members, setMembers]   = useState([]);
+  const [members, setMembers] = useState([]);
   const [selected, setSelected] = useState(null);
-  const [loading, setLoading]   = useState(false);
+  const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
-  const [error, setError]       = useState("");
-  const [success, setSuccess]   = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   // Use the user search endpoint (same one AddPeopleTab uses — known to work).
   // A blank query with a high limit returns all workspace members.
@@ -329,9 +329,8 @@ function TransferOwnershipModal({ onClose }) {
               <button
                 key={m._id}
                 onClick={() => setSelected(m._id)}
-                className={`flex items-center gap-2.5 w-full px-3 py-2.5 border-b border-slate-50 last:border-0 text-left cursor-pointer transition-colors border-none ${
-                  selected === m._id ? "bg-blue-50" : "bg-transparent hover:bg-slate-50"
-                }`}
+                className={`flex items-center gap-2.5 w-full px-3 py-2.5 border-b border-slate-50 last:border-0 text-left cursor-pointer transition-colors border-none ${selected === m._id ? "bg-blue-50" : "bg-transparent hover:bg-slate-50"
+                  }`}
               >
                 {/* Mini avatar */}
                 <div
@@ -389,22 +388,22 @@ function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLea
   }, [onClose]);
 
   const items = [
-    { icon: "ti-users",       label: "Members",       action: onMembers,    danger: false },
+    { icon: "ti-users", label: "Members", action: onMembers, danger: false },
     // Invite People — only for admins/owners who can generate invite links
-    ...( ["owner", "admin"].includes(myRole)
+    ...(["owner", "admin"].includes(myRole)
       ? [{ icon: "ti-user-plus", label: "Invite People", action: onInvite, danger: false }]
       : []
     ),
-    { icon: "ti-plus",        label: "Create Team",   action: onCreateTeam, danger: false },
+    { icon: "ti-plus", label: "Create Team", action: onCreateTeam, danger: false },
     { divider: true },
-    { icon: "ti-settings",    label: "Team Settings", action: onSettings,   danger: false },
+    { icon: "ti-settings", label: "Team Settings", action: onSettings, danger: false },
     // Transfer Ownership — only the owner sees this
-    ...( myRole === "owner"
+    ...(myRole === "owner"
       ? [{ icon: "ti-transfer-in", label: "Transfer Ownership", action: onTransferOwnership, danger: false }]
       : []
     ),
     { divider: true },
-    { icon: "ti-door-exit",   label: "Leave Team",    action: onLeave,      danger: true },
+    { icon: "ti-door-exit", label: "Leave Team", action: onLeave, danger: true },
   ];
 
   return (
@@ -419,9 +418,8 @@ function WorkspaceDropdown({ onClose, onCreateTeam, onMembers, onSettings, onLea
           <button
             key={i}
             onClick={() => { item.action(); onClose(); }}
-            className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium bg-transparent border-none cursor-pointer text-left transition-colors hover:bg-slate-50 ${
-              item.danger ? "text-red-500" : "text-slate-600"
-            }`}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium bg-transparent border-none cursor-pointer text-left transition-colors hover:bg-slate-50 ${item.danger ? "text-red-500" : "text-slate-600"
+              }`}
           >
             <i className={`ti ${item.icon} text-[15px] w-4.5 text-center`} />
             {item.label}
@@ -457,11 +455,11 @@ function SectionHeader({ title, collapsed, onToggle, onAdd }) {
 
 // ── Channel row ───────────────────────────────────────────────────────────────
 function ChannelItem({ channel, active, onClick, unread, onAddMembers, myRole }) {
-  const [hovered, setHovered]   = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { activeWorkspace, updateChannel, selectChannel } = useWorkspace();
 
-  const isGeneral   = channel.name === "general";
+  const isGeneral = channel.name === "general";
   const showActions = hovered || active;
 
   // Only channel members who are admins (or workspace admins/owners) can add members
@@ -477,7 +475,7 @@ function ChannelItem({ channel, active, onClick, unread, onAddMembers, myRole })
         { isFavorited: !channel.isFavorited }
       );
       updateChannel({ ...channel, isFavorited: !channel.isFavorited });
-    } catch {}
+    } catch { }
   };
 
   const handleMute = async (e) => {
@@ -488,7 +486,7 @@ function ChannelItem({ channel, active, onClick, unread, onAddMembers, myRole })
         { isMuted: !channel.isMuted }
       );
       updateChannel({ ...channel, isMuted: !channel.isMuted });
-    } catch {}
+    } catch { }
   };
 
   const handleLeave = async (e) => {
@@ -504,7 +502,7 @@ function ChannelItem({ channel, active, onClick, unread, onAddMembers, myRole })
         updateChannel({ ...channel, isMember: false });
         if (active) selectChannel({ ...channel, isMember: false });
       }
-    } catch {}
+    } catch { }
   };
 
   const handleAddMembers = (e) => {
@@ -518,21 +516,19 @@ function ChannelItem({ channel, active, onClick, unread, onAddMembers, myRole })
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
-      className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors relative ${
-        active ? "bg-blue-50" : "hover:bg-slate-50"
-      }`}
+      className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors relative ${active ? "bg-blue-50" : "hover:bg-slate-50"
+        }`}
     >
       <span className="text-sm text-blue-500 w-4 text-center flex-shrink-0">
         <i className={`ti ${channel.type === "private" ? "ti-lock" : "ti-hash"}`} />
       </span>
       <span
-        className={`text-[13px] flex-1 truncate transition-colors ${
-          active
+        className={`text-[13px] flex-1 truncate transition-colors ${active
             ? "text-blue-600 font-semibold"
             : unread > 0
-            ? "text-blue-600 font-medium"
-            : "text-slate-500"
-        }`}
+              ? "text-blue-600 font-medium"
+              : "text-slate-500"
+          }`}
       >
         {channel.displayName || channel.name}
       </span>
@@ -545,9 +541,8 @@ function ChannelItem({ channel, active, onClick, unread, onAddMembers, myRole })
             className="w-4.5 h-4.5 flex items-center justify-center bg-transparent border-none cursor-pointer rounded p-0"
           >
             <i
-              className={`ti ${channel.isFavorited ? "ti-star-filled" : "ti-star"} text-[11px] ${
-                channel.isFavorited ? "text-amber-400" : "text-slate-400 hover:text-amber-400"
-              }`}
+              className={`ti ${channel.isFavorited ? "ti-star-filled" : "ti-star"} text-[11px] ${channel.isFavorited ? "text-amber-400" : "text-slate-400 hover:text-amber-400"
+                }`}
             />
           </button>
           <button
@@ -556,9 +551,8 @@ function ChannelItem({ channel, active, onClick, unread, onAddMembers, myRole })
             className="w-4.5 h-4.5 flex items-center justify-center bg-transparent border-none cursor-pointer rounded p-0"
           >
             <i
-              className={`ti ${
-                channel.isMuted ? "ti-bell-off" : "ti-bell"
-              } text-[11px] text-slate-400 hover:text-blue-500`}
+              className={`ti ${channel.isMuted ? "ti-bell-off" : "ti-bell"
+                } text-[11px] text-slate-400 hover:text-blue-500`}
             />
           </button>
 
@@ -623,7 +617,7 @@ function ChannelItem({ channel, active, onClick, unread, onAddMembers, myRole })
 // ── DM row ────────────────────────────────────────────────────────────────────
 function DMItem({ dm, active, onClick }) {
   const { user: me } = useAuth();
-  const { dmUnread }  = useDM();
+  const { dmUnread } = useDM();
 
   const other =
     dm.participants?.find((p) => (p.user?._id || p.user) !== me?._id)?.user || {};
@@ -635,15 +629,14 @@ function DMItem({ dm, active, onClick }) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const unread      = dmUnread[dm._id] || 0;
+  const unread = dmUnread[dm._id] || 0;
   const statusClass = STATUS_COLOR[other.status || "offline"];
 
   return (
     <div
       onClick={onClick}
-      className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors ${
-        active ? "bg-blue-50" : "hover:bg-slate-50"
-      }`}
+      className={`flex items-center gap-2 px-3 py-1 mx-1.5 rounded-md cursor-pointer transition-colors ${active ? "bg-blue-50" : "hover:bg-slate-50"
+        }`}
     >
       <div
         className="w-[18px] h-[18px] rounded flex-shrink-0 flex items-center justify-center text-[9px] font-medium text-white relative overflow-visible"
@@ -659,13 +652,12 @@ function DMItem({ dm, active, onClick }) {
         />
       </div>
       <span
-        className={`text-[13px] flex-1 truncate ${
-          active
+        className={`text-[13px] flex-1 truncate ${active
             ? "text-blue-600 font-semibold"
             : unread > 0
-            ? "text-blue-600 font-medium"
-            : "text-slate-500"
-        }`}
+              ? "text-blue-600 font-medium"
+              : "text-slate-500"
+          }`}
       >
         {name}
       </span>
@@ -680,23 +672,23 @@ function DMItem({ dm, active, onClick }) {
 
 // ── Main sidebar ──────────────────────────────────────────────────────────────
 export default function ChannelSidebar() {
-  const { user }                                                     = useAuth();
+  const { user } = useAuth();
   const { activeWorkspace, channels, activeChannel, selectChannel, myRole } =
     useWorkspace();
-  const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread }  = useDM();
+  const { dms, activeDM, selectDM, openDMWithUser, totalDMUnread } = useDM();
 
-  const [collapsed, setCollapsed]       = useState({});
-  const [unreadMap, setUnreadMap]       = useState({});
-  const [search, setSearch]             = useState("");
-  const [showCreateChannel, setShowCC]  = useState(false);
-  const [showNewDM, setShowDM]          = useState(false);
+  const [collapsed, setCollapsed] = useState({});
+  const [unreadMap, setUnreadMap] = useState({});
+  const [search, setSearch] = useState("");
+  const [showCreateChannel, setShowCC] = useState(false);
+  const [showNewDM, setShowDM] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showCreateTeam, setShowCreateTeam] = useState(false);
-  const [showMembers, setShowMembers]   = useState(false);       // channel members (from ChatHeader)
+  const [showMembers, setShowMembers] = useState(false);       // channel members (from ChatHeader)
   const [showWsMembers, setShowWsMembers] = useState(false);     // workspace members (from dropdown)
   const [showSettings, setShowSettings] = useState(false);
-  const [showLeave, setShowLeave]       = useState(false);
-  const [showInvite, setShowInvite]     = useState(false);
+  const [showLeave, setShowLeave] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const [showTransferOwnership, setShowTransferOwnership] = useState(false); // ← NEW
 
   // ── State for "Add Members" opened from channel three-dots ────────────────
@@ -726,7 +718,7 @@ export default function ChannelSidebar() {
     if (activeWorkspace)
       api
         .patch(`/workspaces/${activeWorkspace._id}/channels/${ch._id}/read`)
-        .catch(() => {});
+        .catch(() => { });
   };
 
   const handleAddMembersFromSidebar = (channel) => {
@@ -746,8 +738,8 @@ export default function ChannelSidebar() {
   const favoriteChannels = channels.filter((c) => c.isFavorited);
   const filtered = search.trim()
     ? publicChannels.filter((c) =>
-        (c.displayName || c.name).toLowerCase().includes(search.toLowerCase())
-      )
+      (c.displayName || c.name).toLowerCase().includes(search.toLowerCase())
+    )
     : publicChannels;
 
   return (
@@ -763,13 +755,12 @@ export default function ChannelSidebar() {
               {activeWorkspace?.name || "Loading…"}
             </span>
             <i
-              className={`ti ti-chevron-down text-[13px] text-blue-500 flex-shrink-0 transition-transform duration-200 ${
-                dropdownOpen ? "rotate-180" : ""
-              }`}
+              className={`ti ti-chevron-down text-[13px] text-blue-500 flex-shrink-0 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""
+                }`}
             />
           </button>
 
-          <div className="flex gap-1 flex-shrink-0 ml-2">
+          {/* <div className="flex gap-1 flex-shrink-0 ml-2">
             {["owner", "admin"].includes(myRole) && (
               <button
                 onClick={() => setShowCC(true)}
@@ -779,7 +770,7 @@ export default function ChannelSidebar() {
                 <i className="ti ti-plus" />
               </button>
             )}
-          </div>
+          </div> */}
 
           {dropdownOpen && (
             <WorkspaceDropdown
@@ -904,10 +895,10 @@ export default function ChannelSidebar() {
 
       {/* Modals */}
       {showCreateChannel && <CreateChannelModal open onClose={() => setShowCC(false)} />}
-      {showNewDM         && <NewDMModal open onClose={() => setShowDM(false)} />}
-      {showCreateTeam    && <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />}
-      {showSettings      && <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />}
-      {showLeave         && <LeaveWorkspaceModal onClose={() => setShowLeave(false)} />}
+      {showNewDM && <NewDMModal open onClose={() => setShowDM(false)} />}
+      {showCreateTeam && <CreateWorkspaceModal open onClose={() => setShowCreateTeam(false)} />}
+      {showSettings && <WorkspaceSettingsModal onClose={() => setShowSettings(false)} />}
+      {showLeave && <LeaveWorkspaceModal onClose={() => setShowLeave(false)} />}
 
       {/* Transfer Ownership Modal — owner only */}
       {showTransferOwnership && (
