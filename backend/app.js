@@ -11,7 +11,7 @@ import { errorHandler, notFound } from "./middlewares/errorMiddleware.js";
 
 dotenv.config({ path: "backend/.env" });
 const app = express();
-console.log(process.env.JWT_SECRET)
+
 // ── Security headers ──────────────────────────────────────────────────────────
 app.use(helmet());
 

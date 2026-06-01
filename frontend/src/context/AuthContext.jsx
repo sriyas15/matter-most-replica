@@ -18,9 +18,18 @@ export function AuthProvider({ children }) {
   const initSocket = () => {
     const socket = connectSocket();
 
+    // Keep logged-in user's own status in sync when server broadcasts it
+    socket.on("presence:user_status", ({ userId, status }) => {
+      setUser((prev) => {
+        if (!prev || prev._id.toString() !== userId.toString()) return prev;
+        return { ...prev, status };
+      });
+    });
+
+    // ── FIX: also handle the old event name in case backend uses both ────────
     socket.on("presence:update", ({ userId, status }) => {
       setUser((prev) => {
-        if (!prev || prev._id !== userId) return prev;
+        if (!prev || prev._id.toString() !== userId.toString()) return prev;
         return { ...prev, status };
       });
     });
@@ -42,25 +51,24 @@ export function AuthProvider({ children }) {
         const token = getAccessToken();
         if (!token) return;
 
-        // ── Proactive refresh BEFORE hitting /users/me ──────────────────────
-        // This is safe to await here (not inside an axios interceptor).
-        // If the token expires in the next 30s, refresh it now so the
-        // subsequent /users/me call never hits a 401 in the first place.
         if (isTokenExpiredOrExpiring(token, 30)) {
           try {
             await refreshAccessToken();
           } catch {
-            // Refresh token itself is expired — clear and go to login
             clearAccessToken();
             return;
           }
         }
 
         const { data } = await api.get("/users/me");
-        setUser({ ...data.data, status: "online" });
+
+        // ── FIX: trust the status from the DB — do NOT hardcode "online" ────
+        // The backend presence handler will set the correct status on socket
+        // connect. Hardcoding "online" here was causing the refresh bug.
+        setUser(data.data);
+
         initSocket();
       } catch (err) {
-        // Only wipe the token on a real auth failure, not a network blip
         if (err.response?.status === 401) {
           clearAccessToken();
           setUser(null);
@@ -76,7 +84,8 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
     setAccessToken(data.accessToken);
-    setUser({ ...data.user, status: "online" });
+    // ── FIX: trust status from server, don't hardcode "online" ──────────────
+    setUser(data.user);
     initSocket();
     return data.user;
   }, []);
@@ -84,7 +93,8 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (payload) => {
     const { data } = await api.post("/auth/register", payload);
     setAccessToken(data.accessToken);
-    setUser({ ...data.user, status: "online" });
+    // ── FIX: trust status from server, don't hardcode "online" ──────────────
+    setUser(data.user);
     initSocket();
     return data.user;
   }, []);

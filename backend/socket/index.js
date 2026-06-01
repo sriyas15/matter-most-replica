@@ -4,12 +4,10 @@ import User from "../models/User.js";
 import { registerMessageHandlers } from "./handlers/messageHandler.js";
 import registerChannelHandlers from "./handlers/channelHandler.js";
 import { registerDMHandlers } from "./handlers/directMessageHandler.js";
-import { registerPresenceHandlers } from "./handlers/presenceHandler.js";
 import { registerMeetingHandlers } from "./handlers/meetingHandler.js";
 import { registerPresence } from "./presence.js";
 
 let io;
-console.log(process.env.CLIENT_URL)
 export const initSocket = (httpServer) => {
   io = new Server(httpServer, {
     cors: {
@@ -54,7 +52,6 @@ export const initSocket = (httpServer) => {
   registerMessageHandlers(io, socket);
   registerChannelHandlers(io, socket);
   registerDMHandlers(io, socket);
-  registerPresenceHandlers(io, socket);
   registerMeetingHandlers(io, socket);
 
   socket.on("disconnect", (reason) => {

@@ -12,7 +12,6 @@ function formatTime(dateStr) {
 }
 
 function MessageContent({ text }) {
-  // ensure text is always a string
   const safeText =
     typeof text === "string"
       ? text
@@ -64,7 +63,6 @@ async function downloadFile(url, filename) {
     a.remove();
     URL.revokeObjectURL(blobUrl);
   } catch {
-    // fallback if CORS blocks the fetch (e.g. un-configured S3 bucket)
     window.open(url, "_blank");
   }
 }
@@ -132,7 +130,6 @@ function MessageAttachments({ attachments = [] }) {
           );
         }
 
-        // Docs / generic files
         const sizeLabel = att.size
           ? att.size > 1048576
             ? `${(att.size / 1048576).toFixed(1)} MB`
@@ -166,20 +163,24 @@ function MessageAttachments({ attachments = [] }) {
 
 export default function MessageItem({ message, isConsecutive }) {
   const { user } = useAuth();
-  const { activeWorkspace, activeChannel } = useWorkspace();
-  const [hovered, setHovered]   = useState(false);
-  const [editing, setEditing]   = useState(false);
-  const [editText, setEditText] = useState(message.text || "");
+  const { activeWorkspace, activeChannel, members } = useWorkspace(); // ← added members
+  const [hovered, setHovered]     = useState(false);
+  const [editing, setEditing]     = useState(false);
+  const [editText, setEditText]   = useState(message.text || "");
   const [reactions, setReactions] = useState(message.reactions || []);
 
   const isMine = message.sender?._id === user?._id || message.sender === user?._id;
 
-  // ── Build the sender object from the message, NOT from the logged-in user ──
-  // message.sender is populated by the server as a user sub-document.
-  // Falling back to an empty object keeps the rest of the render safe.
+  // Sender snapshot from the message payload (avatar, name, etc.)
   const sender = (message.sender && typeof message.sender === "object")
     ? message.sender
     : {};
+
+  const senderId   = sender._id?.toString();
+  const liveMember = senderId ? members?.[senderId] : null;
+  const liveSender = liveMember
+    ? { ...sender, status: liveMember.status }
+    : sender;
 
   const name = sender.displayName || sender.name || sender.username || "Unknown";
   const time = formatTime(message.createdAt || message.timestamp);
@@ -228,10 +229,7 @@ export default function MessageItem({ message, isConsecutive }) {
 
         <div className="flex-1 min-w-0">
           {editing ? (
-            <EditBox
-              value={editText}
-              onChange={setEditText}
-              onSave={handleEdit}
+            <EditBox value={editText} onChange={setEditText} onSave={handleEdit}
               onCancel={() => { setEditing(false); setEditText(message.text); }}
             />
           ) : (
@@ -266,13 +264,8 @@ export default function MessageItem({ message, isConsecutive }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/*
-        ── FIX: pass `sender` (the message author) to Avatar, NOT `user`
-           (the logged-in user). Previously every message row showed the
-           current user's avatar and live status dot instead of the actual
-           sender's avatar and status.
-      */}
-      <Avatar user={sender} size={32} showStatus />
+      {/* ── Pass liveSender so the status dot reflects current presence ── */}
+      <Avatar user={liveSender} size={32} showStatus />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2 mb-0.5">
