@@ -163,7 +163,6 @@ function useLiveMemberCount(workspace, channel, snapshotFallback) {
         data.data?.members?.length ?? data.data?.memberCount ?? null;
       setLiveCount(count);
     } catch {
-      // silently fail — snapshotFallback still shows
     } finally {
       setIsLoading(false);
     }
@@ -332,7 +331,7 @@ export default function ChatHeader({ onOpenMembers, isMember = true }) {
                   onClick={() => setSearchOpen(true)}
                 />
               )}
-              <ActionBtn icon="ti-pin" label="Pinned messages" onClick={() => {}} />
+              {/* <ActionBtn icon="ti-pin" label="Pinned messages" onClick={() => {}} /> */}
             </>
           )}
 

@@ -20,11 +20,10 @@ function RailIcon({ icon, label, badge = 0, active = false, onClick }) {
       title={label}
       aria-label={label}
       onClick={onClick}
-      className={`relative flex items-center justify-center w-9 h-9 rounded-xl text-lg border-0 cursor-pointer transition-all duration-150 outline-none ${
-        active
+      className={`relative flex items-center justify-center w-9 h-9 rounded-xl text-lg border-0 cursor-pointer transition-all duration-150 outline-none ${active
           ? "bg-blue-600 text-white"
           : "bg-transparent text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-      }`}
+        }`}
     >
       <i className={`ti ${icon}`} aria-hidden="true" />
       {badge > 0 && (
@@ -44,14 +43,14 @@ export default function WorkspaceSidebar() {
   const { unreadCount, unreadMentions } = useNotifications();
   const navigate = useNavigate();
 
-  const [active, setActive]             = useState("Home");
-  const [sidebarOpen, setSidebarOpen]   = useState(true);   // ← NEW: toggle channel sidebar
-  const [showMenu, setShowMenu]         = useState(false);
+  const [active, setActive] = useState("Home");
+  const [sidebarOpen, setSidebarOpen] = useState(true);   // ← NEW: toggle channel sidebar
+  const [showMenu, setShowMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCreateWS, setShowCreateWS] = useState(false);
-  const [showNotifs, setShowNotifs]     = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
-  const [showNewDM, setShowNewDM]       = useState(false);
+  const [showNewDM, setShowNewDM] = useState(false);
 
   if (loading || !user) return null;
 
@@ -66,7 +65,7 @@ export default function WorkspaceSidebar() {
       await api.patch("/users/me/status", { status });
       updateUser({ status });
       setShowMenu(false);
-    } catch {}
+    } catch { }
   };
 
   const openNotifs = () => {
@@ -96,10 +95,10 @@ export default function WorkspaceSidebar() {
   };
 
   const STATUS_OPTIONS = [
-    { value: "online",  label: "Online",          dot: "bg-emerald-500" },
-    { value: "away",    label: "Away",             dot: "bg-amber-400" },
-    { value: "dnd",     label: "Do Not Disturb",   dot: "bg-red-500" },
-    { value: "offline", label: "Invisible",        dot: "bg-slate-400" },
+    { value: "online", label: "Online", dot: "bg-emerald-500" },
+    { value: "away", label: "Away", dot: "bg-amber-400" },
+    { value: "dnd", label: "Do Not Disturb", dot: "bg-red-500" },
+    { value: "offline", label: "Invisible", dot: "bg-slate-400" },
   ];
 
   return (
@@ -154,11 +153,10 @@ export default function WorkspaceSidebar() {
                 key={ws._id}
                 title={ws.name}
                 onClick={() => selectWorkspace(ws)}
-                className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white cursor-pointer overflow-hidden border-2 transition-all ${
-                  ws._id === activeWorkspace?._id
+                className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold text-white cursor-pointer overflow-hidden border-2 transition-all ${ws._id === activeWorkspace?._id
                     ? "border-blue-600 shadow-sm"
                     : "border-transparent opacity-60 hover:opacity-100"
-                }`}
+                  }`}
                 style={{ background: ws.themeColor || "#2563eb" }}
               >
                 {ws.logo
@@ -199,9 +197,8 @@ export default function WorkspaceSidebar() {
                   <button
                     key={s.value}
                     onClick={() => updateStatus(s.value)}
-                    className={`w-full px-3.5 py-1.5 flex items-center gap-2 text-[12px] text-slate-600 border-none cursor-pointer text-left font-inherit transition-colors ${
-                      user.status === s.value ? "bg-blue-50" : "bg-transparent hover:bg-slate-50"
-                    }`}
+                    className={`w-full px-3.5 py-1.5 flex items-center gap-2 text-[12px] text-slate-600 border-none cursor-pointer text-left font-inherit transition-colors ${user.status === s.value ? "bg-blue-50" : "bg-transparent hover:bg-slate-50"
+                      }`}
                   >
                     <span className={`w-2 h-2 rounded-full flex-shrink-0 ${s.dot}`} />
                     {s.label}
@@ -242,12 +239,12 @@ export default function WorkspaceSidebar() {
 
       {/* Panels */}
       <NotificationPanel open={showNotifs} onClose={() => { setShowNotifs(false); setActive("Home"); }} />
-      <MentionsPanel     open={showMentions} onClose={() => { setShowMentions(false); setActive("Home"); }} />
+      <MentionsPanel open={showMentions} onClose={() => { setShowMentions(false); setActive("Home"); }} />
 
       {/* Modals */}
-      <UserSettingsModal   open={showSettings}  onClose={() => setShowSettings(false)} />
+      <UserSettingsModal open={showSettings} onClose={() => setShowSettings(false)} />
       <CreateWorkspaceModal open={showCreateWS} onClose={() => setShowCreateWS(false)} />
-      <NewDMModal          open={showNewDM}     onClose={() => { setShowNewDM(false); setActive("Home"); }} />
+      <NewDMModal open={showNewDM} onClose={() => { setShowNewDM(false); setActive("Home"); }} />
     </div>
   );
 }

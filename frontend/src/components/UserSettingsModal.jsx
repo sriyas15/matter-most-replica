@@ -6,10 +6,10 @@ import { useAuth } from "../context/AuthContext";
 import api from "../lib/api";
 
 const STATUS_OPTIONS = [
-  { value: "online",  label: "🟢 Online",        dot: "bg-emerald-500" },
-  { value: "away",    label: "🟡 Away",           dot: "bg-amber-400"   },
-  { value: "dnd",     label: "🔴 Do Not Disturb", dot: "bg-red-500"     },
-  { value: "offline", label: "⚫ Invisible",       dot: "bg-slate-400"   },
+  { value: "online", label: "🟢 Online", dot: "bg-emerald-500" },
+  { value: "away", label: "🟡 Away", dot: "bg-amber-400" },
+  { value: "dnd", label: "🔴 Do Not Disturb", dot: "bg-red-500" },
+  { value: "offline", label: "⚫ Invisible", dot: "bg-slate-400" },
 ];
 
 // ── Password input with show/hide toggle ──────────────────────────────────────
@@ -31,7 +31,7 @@ function PasswordInput({ value, onChange, placeholder }) {
         tabIndex={-1}
         aria-label={show ? "Hide password" : "Show password"}
       >
-        {show ? <FiEye size={15} /> : <FiEyeOff size={15} /> }
+        {show ? <FiEye size={15} /> : <FiEyeOff size={15} />}
       </button>
     </div>
   );
@@ -45,24 +45,23 @@ export default function UserSettingsModal({ open, onClose }) {
 
   const [profile, setProfile] = useState({
     displayName: user?.displayName || "",
-    bio:         user?.bio         || "",
-    phone:       user?.phone       || "",
+    bio: user?.bio || "",
+    phone: user?.phone || "",
   });
-
   const [status, setStatus] = useState(user?.status || "online");
-  const [customStatus, setCS] = useState({
-    emoji: user?.customStatus?.emoji || "",
-    text:  user?.customStatus?.text  || "",
-  });
+  // const [customStatus, setCS] = useState({
+  //   emoji: user?.customStatus?.emoji || "",
+  //   text: user?.customStatus?.text || "",
+  // });
 
   const [pwForm, setPwForm] = useState({
     currentPassword: "",
-    newPassword:     "",
-    confirm:         "",
+    newPassword: "",
+    confirm: "",
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const flash = (msg) => {
@@ -77,8 +76,8 @@ export default function UserSettingsModal({ open, onClose }) {
     try {
       const { data } = await api.patch("/users/me", {
         displayName: profile.displayName,
-        bio:         profile.bio,
-        phone:       profile.phone,
+        bio: profile.bio,
+        phone: profile.phone,
       });
       updateUser(data.data);
       flash("Profile saved");
@@ -117,7 +116,7 @@ export default function UserSettingsModal({ open, onClose }) {
       // PATCH /api/users/me/password — backend: { currentPassword, newPassword }
       await api.patch("/users/me/password", {
         currentPassword: pwForm.currentPassword,
-        newPassword:     pwForm.newPassword,
+        newPassword: pwForm.newPassword,
       });
       setPwForm({ currentPassword: "", newPassword: "", confirm: "" });
       flash("Password changed successfully");
@@ -142,11 +141,10 @@ export default function UserSettingsModal({ open, onClose }) {
           <button
             key={t}
             onClick={() => { setTab(t); setError(""); setSuccess(""); }}
-            className={`px-3.5 py-1.5 rounded-md text-xs font-medium capitalize cursor-pointer border transition-colors ${
-              tab === t
+            className={`px-3.5 py-1.5 rounded-md text-xs font-medium capitalize cursor-pointer border transition-colors ${tab === t
                 ? "bg-blue-50 border-blue-200 text-blue-600"
                 : "bg-transparent border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-            }`}
+              }`}
           >
             {t}
           </button>
@@ -221,11 +219,10 @@ export default function UserSettingsModal({ open, onClose }) {
                 <div
                   key={opt.value}
                   onClick={() => setStatus(opt.value)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer border transition-colors ${
-                    status === opt.value
+                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer border transition-colors ${status === opt.value
                       ? "bg-blue-50 border-blue-200"
                       : "bg-slate-50 border-slate-100 hover:bg-slate-100"
-                  }`}
+                    }`}
                 >
                   <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${opt.dot}`} />
                   <span className={`text-sm ${status === opt.value ? "text-slate-800 font-medium" : "text-slate-500"}`}>
@@ -239,7 +236,7 @@ export default function UserSettingsModal({ open, onClose }) {
             </div>
           </Field>
 
-          <Field label="Custom Status">
+          {/* <Field label="Custom Status">
             <div className="flex gap-2">
               <input
                 value={customStatus.emoji}
@@ -254,7 +251,7 @@ export default function UserSettingsModal({ open, onClose }) {
                 maxLength={100}
               />
             </div>
-          </Field>
+          </Field> */}
 
           <Button onClick={saveStatus} disabled={loading} fullWidth>
             {loading ? "Saving…" : "Update Status"}

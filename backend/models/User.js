@@ -144,6 +144,7 @@ userSchema.methods.toPublicProfile = function () {
     bio: this.bio,
     status: this.status,
     customStatus: this.customStatus,
+    phone:       this.phone,
     lastSeenAt: this.lastSeenAt,
     createdAt: this.createdAt,
   };

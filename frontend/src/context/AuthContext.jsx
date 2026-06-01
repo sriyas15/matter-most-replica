@@ -3,16 +3,14 @@ import api, {
   getAccessToken,
   setAccessToken,
   clearAccessToken,
-  isTokenExpiredOrExpiring,
-  refreshAccessToken,
 } from "../lib/api";
 import { connectSocket, disconnectSocket } from "../lib/socket/socket";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser]               = useState(null);
-  const [loading, setLoading]         = useState(true);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [socketReady, setSocketReady] = useState(false);
 
   const initSocket = () => {
@@ -26,7 +24,7 @@ export function AuthProvider({ children }) {
       });
     });
 
-    // ── FIX: also handle the old event name in case backend uses both ────────
+    // Handle old event name too, in case backend uses both
     socket.on("presence:update", ({ userId, status }) => {
       setUser((prev) => {
         if (!prev || prev._id.toString() !== userId.toString()) return prev;
@@ -51,22 +49,14 @@ export function AuthProvider({ children }) {
         const token = getAccessToken();
         if (!token) return;
 
-        if (isTokenExpiredOrExpiring(token, 30)) {
-          try {
-            await refreshAccessToken();
-          } catch {
-            clearAccessToken();
-            return;
-          }
-        }
-
+        // ── FIX: removed manual proactive refresh block ───────────────────
+        // The response interceptor in api.js already handles 401s by
+        // refreshing the token and retrying automatically. Doing it manually
+        // here too caused a race — both tried to refresh simultaneously,
+        // the isRefreshing flag got confused, and one wiped the valid token.
+        // Just fire /users/me directly — the interceptor handles it cleanly.
         const { data } = await api.get("/users/me");
-
-        // ── FIX: trust the status from the DB — do NOT hardcode "online" ────
-        // The backend presence handler will set the correct status on socket
-        // connect. Hardcoding "online" here was causing the refresh bug.
         setUser(data.data);
-
         initSocket();
       } catch (err) {
         if (err.response?.status === 401) {
@@ -84,7 +74,6 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
     setAccessToken(data.accessToken);
-    // ── FIX: trust status from server, don't hardcode "online" ──────────────
     setUser(data.user);
     initSocket();
     return data.user;
@@ -93,14 +82,13 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (payload) => {
     const { data } = await api.post("/auth/register", payload);
     setAccessToken(data.accessToken);
-    // ── FIX: trust status from server, don't hardcode "online" ──────────────
     setUser(data.user);
     initSocket();
     return data.user;
   }, []);
 
   const logout = useCallback(async () => {
-    try { await api.post("/auth/logout"); } catch {}
+    try { await api.post("/auth/logout"); } catch { }
     clearAccessToken();
     setUser(null);
     setSocketReady(false);
